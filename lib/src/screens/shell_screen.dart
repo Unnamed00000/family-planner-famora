@@ -167,19 +167,10 @@ class _ShellScreenState extends State<ShellScreen> {
                   ],
                 ),
               ),
-              bottomNavigationBar: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    NavigationBar(
-                      selectedIndex: safeIndex,
-                      onDestinationSelected: _selectIndex,
-                      destinations: destinations,
-                    ),
-                    const AppFooter(),
-                  ],
-                ),
+              bottomNavigationBar: _MobileNavigationBar(
+                selectedIndex: safeIndex,
+                destinations: destinations,
+                onDestinationSelected: _selectIndex,
               ),
             );
           },
@@ -198,6 +189,133 @@ class _ShellScreenState extends State<ShellScreen> {
     }
     lastIndex = value;
     setState(() => index = value);
+  }
+}
+
+class _MobileNavigationBar extends StatelessWidget {
+  const _MobileNavigationBar({
+    required this.selectedIndex,
+    required this.destinations,
+    required this.onDestinationSelected,
+  });
+
+  final int selectedIndex;
+  final List<NavigationDestination> destinations;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surface,
+      elevation: 6,
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 76,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final itemWidth = (constraints.maxWidth / destinations.length).clamp(74.0, 104.0).toDouble();
+                  final contentWidth = itemWidth * destinations.length;
+                  final stretchItems = contentWidth < constraints.maxWidth;
+                  final effectiveWidth = stretchItems ? constraints.maxWidth : contentWidth;
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                      child: SizedBox(
+                        width: effectiveWidth,
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < destinations.length; i++)
+                              SizedBox(
+                                width: stretchItems ? constraints.maxWidth / destinations.length : itemWidth,
+                                child: _MobileNavigationItem(
+                                  destination: destinations[i],
+                                  selected: i == selectedIndex,
+                                  onTap: () => onDestinationSelected(i),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const AppFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileNavigationItem extends StatelessWidget {
+  const _MobileNavigationItem({
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final NavigationDestination destination;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final foreground = selected ? colors.onSecondaryContainer : colors.onSurfaceVariant;
+    final background = selected ? colors.secondaryContainer : Colors.transparent;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: destination.label,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconTheme.merge(
+                  data: IconThemeData(color: foreground, size: 24),
+                  child: destination.icon,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  destination.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: foreground,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
