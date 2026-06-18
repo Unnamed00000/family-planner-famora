@@ -1,0 +1,109 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true
+        || (
+          exists(/databases/$(database)/documents/members/$(request.auth.uid))
+          && get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
+        )
+      );
+    }
+
+    function isMemberSelf(memberId) {
+      return signedIn() && (
+        memberId == request.auth.uid
+        || (
+          exists(/databases/$(database)/documents/members/$(memberId))
+          && get(/databases/$(database)/documents/members/$(memberId)).data.authUid == request.auth.uid
+        )
+      );
+    }
+
+    match /familyLogins/{login} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /members/{memberId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+      allow update: if signedIn()
+        && (
+          isMemberSelf(memberId)
+          || resource.data.authUid == null
+          || resource.data.authUid == ''
+        )
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'authUid',
+          'updatedAt',
+          'fcmToken',
+          'photoUrl',
+          'photoZoom',
+          'themeMode',
+          'soundEnabled',
+          'vibrationEnabled'
+        ])
+        && (
+          !request.resource.data.diff(resource.data).changedKeys().hasAny(['authUid'])
+          || request.resource.data.authUid == request.auth.uid
+        );
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+      allow update: if signedIn()
+        && isMemberSelf(resource.data.assignedToId)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'completedAt', 'completedBy', 'updatedAt']);
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /activities/{activityId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+      allow update: if signedIn()
+        && isMemberSelf(resource.data.assignedToId)
+        && request.resource.data.assignedToId == resource.data.assignedToId
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'status',
+          'acceptedAt',
+          'onWayAt',
+          'completedAt',
+          'missedAt',
+          'updatedAt'
+        ]);
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+      allow update: if signedIn()
+        && isMemberSelf(resource.data.assignedToId)
+        && request.resource.data.assignedToId == resource.data.assignedToId
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['acceptedAt', 'updatedAt']);
+    }
+
+    match /settings/{settingId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /history/{historyId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+  }
+}
