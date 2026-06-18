@@ -9,9 +9,22 @@ void playTapFeedback({
   required bool vibrationEnabled,
 }) {
   if (soundEnabled) {
-    SystemSound.play(SystemSoundType.click);
+    try {
+      SystemSound.play(SystemSoundType.click).catchError((_) {});
+    } catch (_) {
+      // Some browsers/devices do not support system click sounds.
+    }
   }
+
   if (vibrationEnabled) {
-    js.context['navigator']?.callMethod('vibrate', [35]);
+    try {
+      final navigator = js.context['navigator'];
+      if (navigator != null && navigator.hasProperty('vibrate')) {
+        navigator.callMethod('vibrate', [35]);
+      }
+    } catch (_) {
+      // iPhone/iOS Safari does not support the Vibration API.
+      // Ignore the error so taps still switch tabs normally.
+    }
   }
 }
