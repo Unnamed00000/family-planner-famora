@@ -323,6 +323,11 @@ class _MembersAdmin extends StatelessWidget {
                               icon: const Icon(Icons.photo_camera_rounded),
                             ),
                             IconButton(
+                              tooltip: strings.usePhotoLink,
+                              onPressed: () => _setPhotoLink(context, member),
+                              icon: const Icon(Icons.link_rounded),
+                            ),
+                            IconButton(
                               tooltip: strings.edit,
                               onPressed: () => _editMember(context, member),
                               icon: const Icon(Icons.edit_rounded),
@@ -470,6 +475,95 @@ class _MembersAdmin extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _setPhotoLink(BuildContext context, FamilyMember member) async {
+    final strings = AppStrings.of(context);
+    final controller = TextEditingController(text: member.photoUrl ?? '');
+    var zoom = member.photoZoom.clamp(1, 2).toDouble();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final previewUrl = controller.text.trim();
+          return AlertDialog(
+            title: Text('${strings.photoLink}: ${member.name}'),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: familyMemberColor(member), width: 3),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: previewUrl.isEmpty
+                        ? Center(
+                            child: Icon(
+                              Icons.person_rounded,
+                              size: 72,
+                              color: familyMemberColor(member),
+                            ),
+                          )
+                        : Transform.scale(
+                            scale: zoom,
+                            child: Image.network(
+                              previewUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Center(
+                                child: Icon(
+                                  Icons.broken_image_rounded,
+                                  size: 64,
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: strings.photoLink,
+                      helperText: strings.photoLinkHelp,
+                      prefixIcon: const Icon(Icons.link_rounded),
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                  const SizedBox(height: 16),
+                  Slider(
+                    value: zoom,
+                    min: 1,
+                    max: 2,
+                    divisions: 10,
+                    label: zoom.toStringAsFixed(1),
+                    onChanged: (value) => setDialogState(() => zoom = value),
+                  ),
+                  Text(strings.photoZoom),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(strings.cancel)),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(strings.save)),
+            ],
+          );
+        },
+      ),
+    );
+    if (saved != true) {
+      return;
+    }
+    await repository.updateMemberPhotoUrl(
+      member.id,
+      controller.text.trim(),
+      photoZoom: zoom,
     );
   }
 
