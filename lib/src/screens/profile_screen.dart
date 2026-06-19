@@ -33,6 +33,7 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(strings.profile),
         actions: [
+          PageHelpAction(title: strings.profile, body: strings.profileHelp),
           IconButton(
             tooltip: strings.logout,
             onPressed: authRepository.signOut,

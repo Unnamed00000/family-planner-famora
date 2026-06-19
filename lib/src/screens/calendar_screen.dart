@@ -27,7 +27,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(strings.calendar)),
+      appBar: AppBar(
+        title: Text(strings.calendar),
+        actions: [
+          PageHelpAction(title: strings.calendar, body: strings.calendarHelp),
+        ],
+      ),
       body: StreamBuilder<List<FamilyMember>>(
         stream: widget.familyRepository.watchMembers(),
         builder: (context, memberSnapshot) {
@@ -403,10 +408,7 @@ class _MonthCalendar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final firstDay = DateTime(focusedMonth.year, focusedMonth.month);
-    final daysInMonth = DateTime(focusedMonth.year, focusedMonth.month + 1, 0).day;
-    final leadingEmptyDays = firstDay.weekday - 1;
-    final cellCount = ((leadingEmptyDays + daysInMonth + 6) ~/ 7) * 7;
+    final weeks = _calendarWeeks(focusedMonth);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -426,100 +428,159 @@ class _MonthCalendar extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            GridView.count(
-              crossAxisCount: 7,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.45,
+            Row(
               children: [
-                for (final label in _weekdayLabels(context))
-                  Center(
+                SizedBox(
+                  width: 40,
+                  child: Center(
                     child: Text(
-                      label,
+                      '№',
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: colors.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                for (final label in _weekdayLabels(context))
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        label,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
               ],
             ),
-            GridView.builder(
-              itemCount: cellCount,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                childAspectRatio: 1.02,
-              ),
-              itemBuilder: (context, index) {
-                final dayNumber = index - leadingEmptyDays + 1;
-                if (dayNumber < 1 || dayNumber > daysInMonth) {
-                  return const SizedBox.shrink();
-                }
-                final day = DateTime(focusedMonth.year, focusedMonth.month, dayNumber);
-                final key = _dayKey(day);
-                final hasEvents = (groupedTasks[key]?.isNotEmpty ?? false) || (groupedActivities[key]?.isNotEmpty ?? false);
-                final selected = _sameDay(day, selectedDay);
-                final today = _sameDay(day, DateTime.now());
-                return Padding(
-                  padding: const EdgeInsets.all(3),
-                  child: InkWell(
-                    onTap: () => onSelectDay(key),
-                    borderRadius: BorderRadius.circular(8),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 140),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? colors.primaryContainer
-                            : today
-                                ? colors.secondaryContainer.withValues(alpha: 0.55)
-                                : colors.surfaceContainerHighest.withValues(alpha: 0.38),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: selected ? colors.primary : colors.outlineVariant.withValues(alpha: 0.45),
+            const SizedBox(height: 4),
+            for (final week in weeks)
+              Row(
+                children: [
+                  SizedBox(
+                    width: 40,
+                    height: 48,
+                    child: Center(
+                      child: Text(
+                        '${_isoWeekNumber(week.firstWhere((day) => day != null)!)}',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colors.primary,
+                          fontWeight: FontWeight.w900,
                         ),
-                      ),
-                      child: Stack(
-                        children: [
-                          Center(
-                            child: Text(
-                              '$dayNumber',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: selected ? colors.onPrimaryContainer : colors.onSurface,
-                              ),
-                            ),
-                          ),
-                          if (hasEvents)
-                            Positioned(
-                              top: 5,
-                              right: 5,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: BoxDecoration(
-                                  color: colors.error,
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  '!',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: colors.onError,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
                       ),
                     ),
                   ),
-                );
-              },
-            ),
+                  for (final day in week)
+                    Expanded(
+                      child: _CalendarDayCell(
+                        day: day,
+                        focusedMonth: focusedMonth,
+                        selectedDay: selectedDay,
+                        groupedTasks: groupedTasks,
+                        groupedActivities: groupedActivities,
+                        onSelectDay: onSelectDay,
+                      ),
+                    ),
+                ],
+              ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CalendarDayCell extends StatelessWidget {
+  const _CalendarDayCell({
+    required this.day,
+    required this.focusedMonth,
+    required this.selectedDay,
+    required this.groupedTasks,
+    required this.groupedActivities,
+    required this.onSelectDay,
+  });
+
+  final DateTime? day;
+  final DateTime focusedMonth;
+  final DateTime selectedDay;
+  final Map<DateTime, List<TaskItem>> groupedTasks;
+  final Map<DateTime, List<ActivityItem>> groupedActivities;
+  final ValueChanged<DateTime> onSelectDay;
+
+  @override
+  Widget build(BuildContext context) {
+    if (day == null) {
+      return const SizedBox(height: 48);
+    }
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final key = _dayKey(day!);
+    final hasEvents = (groupedTasks[key]?.isNotEmpty ?? false) || (groupedActivities[key]?.isNotEmpty ?? false);
+    final selected = _sameDay(day!, selectedDay);
+    final today = _sameDay(day!, DateTime.now());
+    final outsideMonth = day!.month != focusedMonth.month;
+    return Padding(
+      padding: const EdgeInsets.all(3),
+      child: SizedBox(
+        height: 48,
+        child: InkWell(
+          onTap: outsideMonth ? null : () => onSelectDay(key),
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            decoration: BoxDecoration(
+              color: selected
+                  ? colors.primaryContainer
+                  : today
+                      ? colors.secondaryContainer.withValues(alpha: 0.55)
+                      : colors.surfaceContainerHighest.withValues(alpha: outsideMonth ? 0.16 : 0.38),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected ? colors.primary : colors.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Text(
+                    '${day!.day}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: outsideMonth
+                          ? colors.onSurfaceVariant.withValues(alpha: 0.45)
+                          : selected
+                              ? colors.onPrimaryContainer
+                              : colors.onSurface,
+                    ),
+                  ),
+                ),
+                if (hasEvents && !outsideMonth)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      width: 19,
+                      height: 19,
+                      decoration: BoxDecoration(
+                        color: colors.error,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '!',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colors.onError,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -677,6 +738,29 @@ List<String> _weekdayLabels(BuildContext context) {
     'da' => const ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn'],
     _ => const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   };
+}
+
+List<List<DateTime?>> _calendarWeeks(DateTime month) {
+  final firstDay = DateTime(month.year, month.month);
+  final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+  final leadingEmptyDays = firstDay.weekday - 1;
+  final cells = <DateTime?>[
+    for (var i = 0; i < leadingEmptyDays; i++) null,
+    for (var day = 1; day <= daysInMonth; day++) DateTime(month.year, month.month, day),
+  ];
+  while (cells.length % 7 != 0) {
+    cells.add(null);
+  }
+  return [
+    for (var index = 0; index < cells.length; index += 7) cells.sublist(index, index + 7),
+  ];
+}
+
+int _isoWeekNumber(DateTime date) {
+  final thursday = date.add(Duration(days: 4 - date.weekday));
+  final firstThursday = DateTime(thursday.year, 1, 4);
+  final firstWeekThursday = firstThursday.add(Duration(days: 4 - firstThursday.weekday));
+  return 1 + (thursday.difference(firstWeekThursday).inDays ~/ 7);
 }
 
 bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;

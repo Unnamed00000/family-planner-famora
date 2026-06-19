@@ -312,6 +312,54 @@ class AppFooter extends StatelessWidget {
   }
 }
 
+class PageHelpAction extends StatelessWidget {
+  const PageHelpAction({
+    required this.title,
+    required this.body,
+    super.key,
+  });
+
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return IconButton(
+      tooltip: strings.help,
+      icon: const Icon(Icons.help_outline_rounded),
+      onPressed: () => showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          final theme = Theme.of(dialogContext);
+          final colors = theme.colorScheme;
+          return AlertDialog(
+            icon: CircleAvatar(
+              backgroundColor: colors.primaryContainer,
+              child: Icon(Icons.help_outline_rounded, color: colors.onPrimaryContainer),
+            ),
+            title: Text(title, textAlign: TextAlign.center),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Text(
+                body,
+                textAlign: TextAlign.start,
+                style: theme.textTheme.bodyLarge?.copyWith(height: 1.35),
+              ),
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(strings.close),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
 class TaskStatusChip extends StatelessWidget {
   const TaskStatusChip({required this.status, super.key});
 

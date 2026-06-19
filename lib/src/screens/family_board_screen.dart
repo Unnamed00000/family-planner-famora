@@ -19,7 +19,12 @@ class FamilyBoardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(strings.board)),
+      appBar: AppBar(
+        title: Text(strings.board),
+        actions: [
+          PageHelpAction(title: strings.board, body: strings.boardHelp),
+        ],
+      ),
       body: StreamBuilder<List<FamilyMember>>(
         stream: familyRepository.watchMembers(),
         builder: (context, memberSnapshot) {

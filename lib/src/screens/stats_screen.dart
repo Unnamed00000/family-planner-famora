@@ -20,7 +20,12 @@ class StatsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(strings.stats)),
+      appBar: AppBar(
+        title: Text(strings.stats),
+        actions: [
+          PageHelpAction(title: strings.stats, body: strings.statsHelp),
+        ],
+      ),
       body: StreamBuilder<List<FamilyMember>>(
         stream: familyRepository.watchMembers(),
         builder: (context, memberSnapshot) {

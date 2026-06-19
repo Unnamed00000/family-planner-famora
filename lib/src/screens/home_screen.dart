@@ -17,7 +17,12 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(strings.home)),
+      appBar: AppBar(
+        title: Text(strings.home),
+        actions: [
+          PageHelpAction(title: strings.home, body: strings.homeHelp),
+        ],
+      ),
       body: StreamBuilder<List<FamilyMember>>(
         stream: familyRepository.watchMembers(),
         builder: (context, membersSnapshot) {

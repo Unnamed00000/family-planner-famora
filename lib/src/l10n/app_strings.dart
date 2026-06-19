@@ -75,6 +75,37 @@ class AppStrings {
   String get save => pick(ru: 'Сохранить', en: 'Save', da: 'Gem');
   String get delete => pick(ru: 'Удалить', en: 'Delete', da: 'Slet');
   String get edit => pick(ru: 'Редактировать', en: 'Edit', da: 'Rediger');
+  String get help => pick(ru: 'Справка', en: 'Help', da: 'Hjælp');
+  String get homeHelp => pick(
+        ru: 'Главная показывает всех членов семьи, их задачи на сегодня, процент выполнения, выполненные задачи, баллы и сумму в датских кронах. Здесь быстро видно, кто лидер дня, у кого остались дела и какой вклад сделал каждый человек.',
+        en: 'Home shows every family member, today tasks, completion percent, completed tasks, points and the value in Danish kroner. Use it to quickly see the day leader, who still has work left, and each person’s contribution.',
+        da: 'Hjem viser alle familiemedlemmer, dagens opgaver, fuldførelsesprocent, færdige opgaver, point og værdien i danske kroner. Her kan du hurtigt se dagens leder, hvem der stadig mangler noget, og hver persons bidrag.',
+      );
+  String get boardHelp => pick(
+        ru: 'Доска показывает семейные уведомления, объявления и сегодняшние задания. Здесь удобно видеть, что происходит в семье прямо сейчас: кто получил уведомление, кто его принял, какие объявления активны и какие задачи есть сегодня.',
+        en: 'Board shows family notifications, announcements and today tasks. It is the live family overview: who received a notification, who accepted it, what announcements are active, and what tasks exist today.',
+        da: 'Tavlen viser familiens notifikationer, meddelelser og dagens opgaver. Den giver et hurtigt overblik over, hvem der har fået og accepteret beskeder, aktive meddelelser og dagens opgaver.',
+      );
+  String get tasksHelp => pick(
+        ru: 'Задачи — это место, где участник начинает работу и отправляет её на проверку. Баллы не начисляются сразу: администратор должен проверить результат и нажать “Подтвердить и оплатить”. Если работа сделана плохо, администратор возвращает её на переделку.',
+        en: 'Tasks is where a member starts work and sends it for review. Points are not paid immediately: an administrator checks the result and taps “Approve and pay”. If the work is not good enough, the administrator returns it for redo.',
+        da: 'Opgaver er stedet, hvor et medlem starter arbejdet og sender det til kontrol. Point betales ikke med det samme: en administrator kontrollerer resultatet og trykker “Godkend og betal”. Hvis arbejdet ikke er godt nok, sendes det tilbage.',
+      );
+  String get calendarHelp => pick(
+        ru: 'Календарь показывает месяц целиком. Красный восклицательный знак означает, что на этот день есть задача или активность. Нажмите на число, чтобы увидеть дела этого дня. Администратор может добавить задачу или активность на выбранную дату и указать время.',
+        en: 'Calendar shows the full month. A red exclamation mark means that day has a task or activity. Tap a date to see the day details. An administrator can add a task or activity to the selected date and set a time.',
+        da: 'Kalenderen viser hele måneden. Et rødt udråbstegn betyder, at dagen har en opgave eller aktivitet. Tryk på en dato for at se dagens detaljer. En administrator kan tilføje en opgave eller aktivitet og vælge tidspunkt.',
+      );
+  String get statsHelp => pick(
+        ru: 'Статистика показывает выполненные и пропущенные задачи, проценты выполнения, время активностей, рейтинг семьи, графики за 7 и 30 дней, а также баллы и сумму в кронах. Это место для контроля прогресса всей семьи.',
+        en: 'Stats shows completed and missed tasks, completion percentage, activity time, family ranking, 7-day and 30-day charts, plus points and kroner value. Use it to track the family’s progress.',
+        da: 'Statistik viser færdige og missede opgaver, fuldførelsesprocent, aktivitetstid, familierangering, grafer for 7 og 30 dage samt point og kroner. Brug den til at følge familiens fremgang.',
+      );
+  String get profileHelp => pick(
+        ru: 'Профиль показывает данные участника: фото, имя, роль, баллы, сумму в кронах, выполненные и пропущенные задачи, рейтинг и достижения. Здесь можно менять язык, тему, звук, вибрацию и фотографию профиля.',
+        en: 'Profile shows the member details: photo, name, role, points, kroner value, completed and missed tasks, rating and achievements. Here you can change language, theme, sound, vibration and profile photo.',
+        da: 'Profilen viser medlemmets oplysninger: foto, navn, rolle, point, kroneværdi, færdige og missede opgaver, rangering og præstationer. Her kan man ændre sprog, tema, lyd, vibration og profilfoto.',
+      );
   String get photo => pick(ru: 'Фото', en: 'Photo', da: 'Foto');
   String get creatorLine => pick(
         ru: 'Разработчик приложения: Адам Маргоев',

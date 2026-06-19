@@ -27,7 +27,12 @@ class _TasksScreenState extends State<TasksScreen> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(strings.tasks)),
+      appBar: AppBar(
+        title: Text(strings.tasks),
+        actions: [
+          PageHelpAction(title: strings.tasks, body: strings.tasksHelp),
+        ],
+      ),
       body: StreamBuilder<List<FamilyMember>>(
         stream: widget.familyRepository.watchMembers(),
         builder: (context, memberSnapshot) {
