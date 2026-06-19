@@ -32,10 +32,10 @@ class CalendarScreen extends StatelessWidget {
                 stream: familyRepository.watchActivities(),
                 builder: (context, activitySnapshot) {
                   final activities = activitySnapshot.data ?? [];
-                  final groupedTasks = <String, List<TaskItem>>{};
-                  final groupedActivities = <String, List<ActivityItem>>{};
+                  final groupedTasks = <DateTime, List<TaskItem>>{};
+                  final groupedActivities = <DateTime, List<ActivityItem>>{};
                   for (final task in tasks) {
-                    groupedTasks.putIfAbsent(dateFormat.format(task.dueAt), () => []).add(task);
+                    groupedTasks.putIfAbsent(_dayKey(task.dueAt), () => []).add(task);
                   }
                   for (final dayTasks in groupedTasks.values) {
                     dayTasks.sort((a, b) {
@@ -45,9 +45,10 @@ class CalendarScreen extends StatelessWidget {
                     });
                   }
                   for (final activity in activities) {
-                    groupedActivities.putIfAbsent(dateFormat.format(activity.startAt), () => []).add(activity);
+                    groupedActivities.putIfAbsent(_dayKey(activity.startAt), () => []).add(activity);
                   }
-                  final days = {...groupedTasks.keys, ...groupedActivities.keys}.toList()..sort();
+                  final days = {...groupedTasks.keys, ...groupedActivities.keys}.toList()
+                    ..sort((a, b) => b.compareTo(a));
                   if (days.isEmpty) {
                     return EmptyState(icon: Icons.calendar_month_rounded, title: strings.emptyCalendar);
                   }
@@ -60,7 +61,7 @@ class CalendarScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(day, style: Theme.of(context).textTheme.titleMedium),
+                              Text(dateFormat.format(day), style: Theme.of(context).textTheme.titleMedium),
                               const SizedBox(height: 8),
                               for (final activity in groupedActivities[day] ?? <ActivityItem>[])
                                 ...[
@@ -148,3 +149,5 @@ class CalendarScreen extends StatelessWidget {
     return activity.status == ActivityStatus.completed || activity.status == ActivityStatus.missed;
   }
 }
+
+DateTime _dayKey(DateTime value) => DateTime(value.year, value.month, value.day);
