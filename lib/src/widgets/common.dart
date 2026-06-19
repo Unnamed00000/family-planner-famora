@@ -177,6 +177,115 @@ class StatPill extends StatelessWidget {
   }
 }
 
+class PointsRewardCard extends StatelessWidget {
+  const PointsRewardCard({
+    required this.points,
+    required this.pointValue,
+    required this.label,
+    this.color,
+    this.compact = false,
+    super.key,
+  });
+
+  final int points;
+  final double pointValue;
+  final String label;
+  final Color? color;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final accent = color ?? colors.tertiary;
+    final money = strings.moneyForPoints(points, pointValue);
+    return Container(
+      width: compact ? null : double.infinity,
+      padding: EdgeInsets.all(compact ? 10 : 14),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(accent.withValues(alpha: 0.10), colors.surface),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: accent.withValues(alpha: 0.45), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.10),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+        children: [
+          Container(
+            width: compact ? 38 : 48,
+            height: compact ? 38 : 48,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.stars_rounded, color: accent, size: compact ? 22 : 30),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  strings.pointsCount(points),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: (compact ? theme.textTheme.titleMedium : theme.textTheme.headlineSmall)?.copyWith(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.payments_rounded, size: 15, color: colors.onPrimaryContainer),
+                      const SizedBox(width: 5),
+                      Text(
+                        money,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colors.onPrimaryContainer,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class AppFooter extends StatelessWidget {
   const AppFooter({
     this.compact = false,

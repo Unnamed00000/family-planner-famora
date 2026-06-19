@@ -76,6 +76,19 @@ class ProfileScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 18),
+                StreamBuilder<AppSettings>(
+                  stream: familyRepository.watchAppSettings(),
+                  builder: (context, settingsSnapshot) {
+                    final pointValue = settingsSnapshot.data?.pointValueDkk ?? 1;
+                    return PointsRewardCard(
+                      points: member.points,
+                      pointValue: pointValue,
+                      label: strings.totalPoints,
+                      color: familyMemberColor(member),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(14),
@@ -161,23 +174,15 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
-                StreamBuilder<AppSettings>(
-                  stream: familyRepository.watchAppSettings(),
-                  builder: (context, settingsSnapshot) {
-                    final pointValue = settingsSnapshot.data?.pointValueDkk ?? 1;
-                    return Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        StatPill(icon: Icons.check_circle_rounded, label: strings.completed, value: member.completedTasks.toString()),
-                        StatPill(icon: Icons.cancel_rounded, label: strings.missed, value: member.missedTasks.toString()),
-                        StatPill(icon: Icons.stars_rounded, label: strings.points, value: member.points.toString()),
-                        StatPill(icon: Icons.payments_rounded, label: strings.totalPoints, value: strings.moneyForPoints(member.points, pointValue)),
-                        StatPill(icon: Icons.leaderboard_rounded, label: strings.rating, value: member.rating.toString()),
-                      ],
-                    );
-                  },
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    StatPill(icon: Icons.check_circle_rounded, label: strings.completed, value: member.completedTasks.toString()),
+                    StatPill(icon: Icons.cancel_rounded, label: strings.missed, value: member.missedTasks.toString()),
+                    StatPill(icon: Icons.leaderboard_rounded, label: strings.rating, value: member.rating.toString()),
+                  ],
                 ),
                 const SizedBox(height: 22),
                 Text(strings.achievements, style: Theme.of(context).textTheme.titleLarge),

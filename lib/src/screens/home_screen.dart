@@ -77,7 +77,7 @@ class HomeScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 360,
-                          mainAxisExtent: 270,
+                          mainAxisExtent: 320,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
@@ -111,7 +111,7 @@ class HomeScreen extends StatelessWidget {
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(member.name, style: Theme.of(context).textTheme.titleMedium),
-                                                Text(strings.pointsAndMoney(member.points, pointValue)),
+                                                Text(strings.yearsRole(member.age, member.role.isAdmin)),
                                               ],
                                             ),
                                           ),
@@ -121,6 +121,14 @@ class HomeScreen extends StatelessWidget {
                                       const SizedBox(height: 12),
                                       LinearProgressIndicator(value: percent),
                                       const SizedBox(height: 12),
+                                      PointsRewardCard(
+                                        points: member.points,
+                                        pointValue: pointValue,
+                                        label: strings.totalPoints,
+                                        color: familyMemberColor(member),
+                                        compact: true,
+                                      ),
+                                      const SizedBox(height: 10),
                                       Text('${strings.completed}: ${strings.doneOf(done, memberTasks.length)}'),
                                       Text('${strings.todayPoints}: ${strings.pointsAndMoney(todayPoints, pointValue)}'),
                                       const SizedBox(height: 8),

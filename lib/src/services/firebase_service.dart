@@ -360,39 +360,54 @@ class FamilyRepository {
     final uid = _auth.currentUser?.uid;
     final now = DateTime.now();
     final completed = status == TaskStatus.done;
-    await _tasks.doc(task.id).update({
-      'status': status.name,
-      'completedAt': completed ? Timestamp.fromDate(now) : null,
-      'completedBy': completed ? uid : null,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    if (completed && task.status != TaskStatus.done) {
-      await _members.doc(task.assignedToId).update({
-        'completedTasks': FieldValue.increment(1),
-        'points': FieldValue.increment(task.points),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      if (task.recurrence != TaskRecurrence.once) {
-        final nextTask = TaskItem(
-          id: '',
-          title: task.title,
-          description: task.description,
-          assignedToId: task.assignedToId,
-          priority: task.priority,
-          dueAt: _nextDueAt(task.dueAt, task.recurrence),
-          recurrence: task.recurrence,
-          status: TaskStatus.pending,
-          points: task.points,
-          createdBy: task.createdBy,
-        );
-        await _tasks.add(nextTask.toJson());
+    final taskRef = _tasks.doc(task.id);
+    final memberRef = _members.doc(task.assignedToId);
+    final shouldCreateRecurringTask = await _firestore.runTransaction<bool>((transaction) async {
+      final snapshot = await transaction.get(taskRef);
+      final currentStatus = TaskStatusX.fromWire(snapshot.data()?['status'] as String?);
+      if (currentStatus == TaskStatus.done && status != TaskStatus.done) {
+        return false;
       }
-    }
-    if (status == TaskStatus.overdue && task.status != TaskStatus.overdue) {
-      await _members.doc(task.assignedToId).update({
-        'missedTasks': FieldValue.increment(1),
+
+      transaction.update(taskRef, {
+        'status': status.name,
+        'completedAt': completed ? Timestamp.fromDate(now) : null,
+        'completedBy': completed ? uid : null,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      if (completed && currentStatus != TaskStatus.done) {
+        transaction.update(memberRef, {
+          'completedTasks': FieldValue.increment(1),
+          'points': FieldValue.increment(task.points),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        return task.recurrence != TaskRecurrence.once;
+      }
+
+      if (status == TaskStatus.overdue && currentStatus != TaskStatus.overdue) {
+        transaction.update(memberRef, {
+          'missedTasks': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      return false;
+    });
+
+    if (shouldCreateRecurringTask) {
+      final nextTask = TaskItem(
+        id: '',
+        title: task.title,
+        description: task.description,
+        assignedToId: task.assignedToId,
+        priority: task.priority,
+        dueAt: _nextDueAt(task.dueAt, task.recurrence),
+        recurrence: task.recurrence,
+        status: TaskStatus.pending,
+        points: task.points,
+        createdBy: task.createdBy,
+      );
+      await _tasks.add(nextTask.toJson());
     }
     await writeHistory(status.name, 'task', task.title);
   }

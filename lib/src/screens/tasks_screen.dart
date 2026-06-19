@@ -46,44 +46,52 @@ class _TasksScreenState extends State<TasksScreen> {
               if (status != null) {
                 tasks = tasks.where((task) => task.status == status).toList();
               }
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  TextField(
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      labelText: strings.taskSearch,
-                    ),
-                    onChanged: (value) => setState(() => query = value),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<TaskStatus?>(
-                    initialValue: status,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.filter_alt_rounded),
-                      labelText: strings.filter,
-                    ),
-                    items: [
-                      DropdownMenuItem(value: null, child: Text(strings.allStatuses)),
-                      for (final item in TaskStatus.values) DropdownMenuItem(value: item, child: Text(strings.taskStatus(item))),
-                    ],
-                    onChanged: (value) => setState(() => status = value),
-                  ),
-                  const SizedBox(height: 14),
-                  if (tasks.isEmpty)
-                    EmptyState(icon: Icons.checklist_rounded, title: strings.noTasksFound)
-                  else
-                    for (final task in tasks)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _TaskCard(
-                          task: task,
-                          member: members[task.assignedToId],
-                          currentMember: widget.currentMember,
-                          familyRepository: widget.familyRepository,
+              return StreamBuilder<AppSettings>(
+                stream: widget.familyRepository.watchAppSettings(),
+                builder: (context, settingsSnapshot) {
+                  final pointValue = settingsSnapshot.data?.pointValueDkk ?? 1;
+                  return ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      TextField(
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          labelText: strings.taskSearch,
                         ),
+                        onChanged: (value) => setState(() => query = value),
                       ),
-                ],
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<TaskStatus?>(
+                        initialValue: status,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.filter_alt_rounded),
+                          labelText: strings.filter,
+                        ),
+                        items: [
+                          DropdownMenuItem(value: null, child: Text(strings.allStatuses)),
+                          for (final item in TaskStatus.values)
+                            DropdownMenuItem(value: item, child: Text(strings.taskStatus(item))),
+                        ],
+                        onChanged: (value) => setState(() => status = value),
+                      ),
+                      const SizedBox(height: 14),
+                      if (tasks.isEmpty)
+                        EmptyState(icon: Icons.checklist_rounded, title: strings.noTasksFound)
+                      else
+                        for (final task in tasks)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _TaskCard(
+                              task: task,
+                              member: members[task.assignedToId],
+                              currentMember: widget.currentMember,
+                              familyRepository: widget.familyRepository,
+                              pointValue: pointValue,
+                            ),
+                          ),
+                    ],
+                  );
+                },
               );
             },
           );
@@ -99,12 +107,14 @@ class _TaskCard extends StatelessWidget {
     required this.member,
     required this.currentMember,
     required this.familyRepository,
+    required this.pointValue,
   });
 
   final TaskItem task;
   final FamilyMember? member;
   final FamilyMember? currentMember;
   final FamilyRepository familyRepository;
+  final double pointValue;
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +140,14 @@ class _TaskCard extends StatelessWidget {
               Text(task.description),
             ],
             const SizedBox(height: 10),
+            PointsRewardCard(
+              points: task.points,
+              pointValue: pointValue,
+              label: strings.points,
+              color: member == null ? null : familyMemberColor(member!),
+              compact: true,
+            ),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -138,7 +156,6 @@ class _TaskCard extends StatelessWidget {
                 Chip(label: Text(dateFormat.format(task.dueAt)), avatar: const Icon(Icons.event_rounded)),
                 Chip(label: Text(timeFormat.format(task.dueAt)), avatar: const Icon(Icons.schedule_rounded)),
                 Chip(label: Text(strings.taskRecurrence(task.recurrence)), avatar: const Icon(Icons.repeat_rounded)),
-                Chip(label: Text(strings.pointsCount(task.points)), avatar: const Icon(Icons.stars_rounded)),
               ],
             ),
             if (canComplete) ...[
@@ -153,7 +170,20 @@ class _TaskCard extends StatelessWidget {
                     label: Text(strings.start),
                   ),
                   FilledButton.icon(
-                    onPressed: task.status == TaskStatus.done ? null : () => familyRepository.markTask(task, TaskStatus.done),
+                    onPressed: task.status == TaskStatus.done
+                        ? null
+                        : () async {
+                            await familyRepository.markTask(task, TaskStatus.done);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    '+${strings.pointsAndMoney(task.points, pointValue)}',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
                     icon: const Icon(Icons.check_rounded),
                     label: Text(strings.done),
                   ),
