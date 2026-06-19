@@ -44,26 +44,6 @@ class ProfileScreen extends StatelessWidget {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                DropdownButtonFormField<Locale>(
-                  initialValue: locale,
-                  decoration: InputDecoration(
-                    labelText: strings.chooseLanguage,
-                    prefixIcon: const Icon(Icons.language_rounded),
-                  ),
-                  items: [
-                    for (final item in AppStrings.supportedLocales)
-                      DropdownMenuItem(
-                        value: item,
-                        child: Text(AppStrings.languageNames[item.languageCode] ?? item.languageCode),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      onLocaleChanged(value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 18),
                 Center(child: MemberAvatar(member: member, radius: 54)),
                 const SizedBox(height: 12),
                 Center(
@@ -115,6 +95,38 @@ class ProfileScreen extends StatelessWidget {
                             final mode = value ? ThemeMode.dark : ThemeMode.light;
                             onThemeModeChanged(mode);
                             familyRepository.updateMemberPreferences(member.id, themeMode: mode);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(strings.chooseLanguage, style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<Locale>(
+                          initialValue: locale,
+                          decoration: InputDecoration(
+                            labelText: strings.chooseLanguage,
+                            prefixIcon: const Icon(Icons.language_rounded),
+                          ),
+                          items: [
+                            for (final item in AppStrings.supportedLocales)
+                              DropdownMenuItem(
+                                value: item,
+                                child: Text(AppStrings.languageNames[item.languageCode] ?? item.languageCode),
+                              ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              onLocaleChanged(value);
+                            }
                           },
                         ),
                       ],
