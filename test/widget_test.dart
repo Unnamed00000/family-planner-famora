@@ -1,5 +1,6 @@
 import 'package:family_planner/src/l10n/app_strings.dart';
 import 'package:family_planner/src/utils/photo_url.dart';
+import 'package:family_planner/src/utils/week_number.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,5 +22,11 @@ void main() {
       ),
       'https://raw.githubusercontent.com/Unnamed00000/family-planner-famora/main/Profile%20photos/Samira.jpg',
     );
+  });
+
+  test('uses ISO week 25 for 19 June 2026', () {
+    expect(isoWeekNumber(DateTime(2026, 6, 15)), 25);
+    expect(isoWeekNumber(DateTime(2026, 6, 19)), 25);
+    expect(isoWeekNumber(DateTime(2026, 6, 22)), 26);
   });
 }

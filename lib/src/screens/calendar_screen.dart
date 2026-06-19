@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_strings.dart';
 import '../models/app_models.dart';
 import '../services/firebase_service.dart';
+import '../utils/week_number.dart';
 import '../widgets/common.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -465,7 +466,7 @@ class _MonthCalendar extends StatelessWidget {
                     height: 48,
                     child: Center(
                       child: Text(
-                        '${_isoWeekNumber(week.firstWhere((day) => day != null)!)}',
+                        '${isoWeekNumber(week.firstWhere((day) => day != null)!)}',
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: colors.primary,
                           fontWeight: FontWeight.w900,
@@ -754,13 +755,6 @@ List<List<DateTime?>> _calendarWeeks(DateTime month) {
   return [
     for (var index = 0; index < cells.length; index += 7) cells.sublist(index, index + 7),
   ];
-}
-
-int _isoWeekNumber(DateTime date) {
-  final thursday = date.add(Duration(days: 4 - date.weekday));
-  final firstThursday = DateTime(thursday.year, 1, 4);
-  final firstWeekThursday = firstThursday.add(Duration(days: 4 - firstThursday.weekday));
-  return 1 + (thursday.difference(firstWeekThursday).inDays ~/ 7);
 }
 
 bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
