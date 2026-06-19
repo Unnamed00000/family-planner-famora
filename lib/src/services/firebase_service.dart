@@ -273,10 +273,14 @@ class FamilyRepository {
     });
   }
 
-  Future<void> updateMemberPhotoUrl(String memberId, String? photoUrl) async {
+  Future<void> updateMemberPhotoUrl(
+    String memberId,
+    String? photoUrl, {
+    double photoZoom = 1,
+  }) async {
     await _members.doc(memberId).update({
       'photoUrl': photoUrl == null || photoUrl.trim().isEmpty ? null : photoUrl.trim(),
-      'photoZoom': 1,
+      'photoZoom': photoZoom.clamp(1, 2),
       'updatedAt': FieldValue.serverTimestamp(),
     });
     await writeHistory('set_photo_url', 'member', memberId);

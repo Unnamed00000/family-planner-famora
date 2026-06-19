@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
   <!--
@@ -31,6 +31,22 @@
 
   <title>family_planner</title>
   <link rel="manifest" href="manifest.json">
+<script id="famora-ios-cache-cleanup">
+(function () {
+  try {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        registrations.forEach(function (registration) { registration.unregister(); });
+      });
+    }
+    if (window.caches) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (key) { caches.delete(key); });
+      });
+    }
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
   <!--
