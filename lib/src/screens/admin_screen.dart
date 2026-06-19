@@ -133,7 +133,7 @@ class _ActivitiesAdmin extends StatelessWidget {
     final title = TextEditingController(text: activity?.title ?? '');
     final description = TextEditingController(text: activity?.description ?? '');
     final location = TextEditingController(text: activity?.location ?? '');
-    var assignedTo = activity?.assignedToId ?? members.first.id;
+    final selectedAssigneeIds = <String>{activity?.assignedToId ?? members.first.id};
     var startAt = activity?.startAt ?? DateTime.now().add(const Duration(hours: 2));
     var leaveAt = activity?.leaveAt ?? startAt.subtract(const Duration(minutes: 30));
     var endAt = activity?.endAt ?? startAt.add(const Duration(hours: 1));
@@ -171,13 +171,18 @@ class _ActivitiesAdmin extends StatelessWidget {
                 const SizedBox(height: 10),
                 TextField(controller: location, decoration: InputDecoration(labelText: strings.location)),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: assignedTo,
-                  decoration: InputDecoration(labelText: strings.assignee),
-                  items: [
-                    for (final member in members) DropdownMenuItem(value: member.id, child: Text(member.name)),
-                  ],
-                  onChanged: (value) => setState(() => assignedTo = value ?? assignedTo),
+                _AssigneeSelector(
+                  members: members,
+                  selectedIds: selectedAssigneeIds,
+                  onChanged: (memberId, selected) {
+                    setState(() {
+                      if (selected) {
+                        selectedAssigneeIds.add(memberId);
+                      } else if (selectedAssigneeIds.length > 1) {
+                        selectedAssigneeIds.remove(memberId);
+                      }
+                    });
+                  },
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
@@ -246,21 +251,24 @@ class _ActivitiesAdmin extends StatelessWidget {
     if (saved != true) {
       return;
     }
-    await repository.saveActivity(
-      ActivityItem(
-        id: activity?.id ?? '',
-        title: title.text.trim(),
-        description: description.text.trim(),
-        assignedToId: assignedTo,
-        startAt: startAt,
-        leaveAt: leaveAt,
-        endAt: endAt,
-        status: status,
-        location: location.text.trim().isEmpty ? null : location.text.trim(),
-        createdBy: activity?.createdBy ?? currentMember?.id,
-        createdAt: activity?.createdAt,
-      ),
-    );
+    final assigneeIds = selectedAssigneeIds.toList();
+    for (var index = 0; index < assigneeIds.length; index++) {
+      await repository.saveActivity(
+        ActivityItem(
+          id: index == 0 ? activity?.id ?? '' : '',
+          title: title.text.trim(),
+          description: description.text.trim(),
+          assignedToId: assigneeIds[index],
+          startAt: startAt,
+          leaveAt: leaveAt,
+          endAt: endAt,
+          status: status,
+          location: location.text.trim().isEmpty ? null : location.text.trim(),
+          createdBy: activity?.createdBy ?? currentMember?.id,
+          createdAt: index == 0 ? activity?.createdAt : null,
+        ),
+      );
+    }
   }
 }
 
@@ -639,6 +647,7 @@ class _TasksAdmin extends StatelessWidget {
       stream: repository.watchMembers(),
       builder: (context, memberSnapshot) {
         final members = memberSnapshot.data ?? [];
+        final membersById = {for (final member in members) member.id: member};
         return StreamBuilder<List<TaskItem>>(
           stream: repository.watchTasks(),
           builder: (context, taskSnapshot) {
@@ -657,7 +666,10 @@ class _TasksAdmin extends StatelessWidget {
                     child: ListTile(
                       leading: Icon(task.status.icon, color: task.priority.color),
                       title: Text(task.title),
-                      subtitle: Text('${dateFormat.format(task.dueAt)} ${timeFormat.format(task.dueAt)}'),
+                      subtitle: Text(
+                        '${membersById[task.assignedToId]?.name ?? strings.noAssignee} - '
+                        '${dateFormat.format(task.dueAt)} ${timeFormat.format(task.dueAt)}',
+                      ),
                       trailing: Wrap(
                         children: [
                           IconButton(
@@ -687,7 +699,7 @@ class _TasksAdmin extends StatelessWidget {
     final title = TextEditingController(text: task?.title ?? '');
     final description = TextEditingController(text: task?.description ?? '');
     final points = TextEditingController(text: (task?.points ?? 5).toString());
-    var assignedTo = task?.assignedToId ?? members.first.id;
+    final selectedAssigneeIds = <String>{task?.assignedToId ?? members.first.id};
     var priority = task?.priority ?? TaskPriority.normal;
     var recurrence = task?.recurrence ?? TaskRecurrence.once;
     var status = task?.status ?? TaskStatus.pending;
@@ -707,13 +719,18 @@ class _TasksAdmin extends StatelessWidget {
                 const SizedBox(height: 10),
                 TextField(controller: points, decoration: InputDecoration(labelText: strings.points), keyboardType: TextInputType.number),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: assignedTo,
-                  decoration: InputDecoration(labelText: strings.assignee),
-                  items: [
-                    for (final member in members) DropdownMenuItem(value: member.id, child: Text(member.name)),
-                  ],
-                  onChanged: (value) => setState(() => assignedTo = value ?? assignedTo),
+                _AssigneeSelector(
+                  members: members,
+                  selectedIds: selectedAssigneeIds,
+                  onChanged: (memberId, selected) {
+                    setState(() {
+                      if (selected) {
+                        selectedAssigneeIds.add(memberId);
+                      } else if (selectedAssigneeIds.length > 1) {
+                        selectedAssigneeIds.remove(memberId);
+                      }
+                    });
+                  },
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<TaskPriority>(
@@ -778,19 +795,66 @@ class _TasksAdmin extends StatelessWidget {
     if (saved != true) {
       return;
     }
-    await repository.saveTask(
-      TaskItem(
-        id: task?.id ?? '',
-        title: title.text.trim(),
-        description: description.text.trim(),
-        assignedToId: assignedTo,
-        priority: priority,
-        dueAt: dueAt,
-        recurrence: recurrence,
-        status: status,
-        points: int.tryParse(points.text) ?? 5,
-        createdBy: task?.createdBy ?? currentMember?.id,
-        createdAt: task?.createdAt,
+    final assigneeIds = selectedAssigneeIds.toList();
+    for (var index = 0; index < assigneeIds.length; index++) {
+      await repository.saveTask(
+        TaskItem(
+          id: index == 0 ? task?.id ?? '' : '',
+          title: title.text.trim(),
+          description: description.text.trim(),
+          assignedToId: assigneeIds[index],
+          priority: priority,
+          dueAt: dueAt,
+          recurrence: recurrence,
+          status: status,
+          points: int.tryParse(points.text) ?? 5,
+          createdBy: task?.createdBy ?? currentMember?.id,
+          createdAt: index == 0 ? task?.createdAt : null,
+        ),
+      );
+    }
+  }
+}
+
+class _AssigneeSelector extends StatelessWidget {
+  const _AssigneeSelector({
+    required this.members,
+    required this.selectedIds,
+    required this.onChanged,
+  });
+
+  final List<FamilyMember> members;
+  final Set<String> selectedIds;
+  final void Function(String memberId, bool selected) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: strings.assignee,
+        prefixIcon: const Icon(Icons.group_rounded),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final member in members)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              secondary: MemberAvatar(member: member, radius: 16),
+              title: Text(member.name),
+              value: selectedIds.contains(member.id),
+              activeColor: familyMemberColor(member),
+              onChanged: (value) {
+                if (selectedIds.length == 1 && selectedIds.contains(member.id) && value == false) {
+                  return;
+                }
+                onChanged(member.id, value ?? false);
+              },
+            ),
+        ],
       ),
     );
   }
