@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "family-planner-famora",
     "public": "build/web",
     "ignore": [
       "firebase.json",
