@@ -121,7 +121,7 @@ class AppStrings {
   String get start => pick(ru: 'Начать', en: 'Start', da: 'Start');
   String get done => pick(ru: 'Готово', en: 'Done', da: 'Færdig');
   String get sendForReview => pick(ru: 'На проверку', en: 'Send for review', da: 'Send til kontrol');
-  String get approveTask => pick(ru: 'Подтвердить', en: 'Approve', da: 'Godkend');
+  String get approveTask => pick(ru: 'Подтвердить и оплатить', en: 'Approve and pay', da: 'Godkend og betal');
   String get redoTask => pick(ru: 'Переделать', en: 'Redo', da: 'Lav igen');
   String get taskSentForReview => pick(ru: 'Задача отправлена на проверку', en: 'Task sent for review', da: 'Opgave sendt til kontrol');
   String get taskReturnedForRedo => pick(ru: 'Задача возвращена на переделку', en: 'Task returned for redo', da: 'Opgave sendt tilbage');
