@@ -37,6 +37,13 @@ class CalendarScreen extends StatelessWidget {
                   for (final task in tasks) {
                     groupedTasks.putIfAbsent(dateFormat.format(task.dueAt), () => []).add(task);
                   }
+                  for (final dayTasks in groupedTasks.values) {
+                    dayTasks.sort((a, b) {
+                      final aCreated = a.createdAt ?? a.dueAt;
+                      final bCreated = b.createdAt ?? b.dueAt;
+                      return bCreated.compareTo(aCreated);
+                    });
+                  }
                   for (final activity in activities) {
                     groupedActivities.putIfAbsent(dateFormat.format(activity.startAt), () => []).add(activity);
                   }

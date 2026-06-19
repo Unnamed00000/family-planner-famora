@@ -7,7 +7,7 @@ enum TaskPriority { low, normal, high, urgent }
 
 enum TaskRecurrence { once, daily, weekly, monthly }
 
-enum TaskStatus { pending, inProgress, done, overdue }
+enum TaskStatus { pending, inProgress, awaitingApproval, done, overdue }
 
 enum ActivityStatus { planned, accepted, onWay, completed, missed }
 
@@ -85,6 +85,8 @@ extension TaskStatusX on TaskStatus {
         return 'Ожидает';
       case TaskStatus.inProgress:
         return 'Выполняется';
+      case TaskStatus.awaitingApproval:
+        return 'На проверке';
       case TaskStatus.done:
         return 'Выполнено';
       case TaskStatus.overdue:
@@ -98,6 +100,8 @@ extension TaskStatusX on TaskStatus {
         return Icons.hourglass_bottom_rounded;
       case TaskStatus.inProgress:
         return Icons.play_circle_rounded;
+      case TaskStatus.awaitingApproval:
+        return Icons.fact_check_rounded;
       case TaskStatus.done:
         return Icons.check_circle_rounded;
       case TaskStatus.overdue:

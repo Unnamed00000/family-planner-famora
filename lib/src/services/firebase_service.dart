@@ -121,7 +121,7 @@ class FamilyRepository {
   }
 
   Stream<List<TaskItem>> watchTasks() {
-    return _tasks.orderBy('dueAt').snapshots().map(
+    return _tasks.orderBy('createdAt', descending: true).snapshots().map(
           (snapshot) => snapshot.docs.map(TaskItem.fromDoc).toList(),
         );
   }
@@ -132,7 +132,11 @@ class FamilyRepository {
         .snapshots()
         .map((snapshot) {
           final tasks = snapshot.docs.map(TaskItem.fromDoc).toList();
-          tasks.sort((a, b) => a.dueAt.compareTo(b.dueAt));
+          tasks.sort((a, b) {
+            final aCreated = a.createdAt ?? a.dueAt;
+            final bCreated = b.createdAt ?? b.dueAt;
+            return bCreated.compareTo(aCreated);
+          });
           return tasks;
         });
   }

@@ -323,6 +323,7 @@ class TaskStatusChip extends StatelessWidget {
     final color = switch (status) {
       TaskStatus.done => Colors.green,
       TaskStatus.overdue => Colors.red,
+      TaskStatus.awaitingApproval => Colors.purple,
       TaskStatus.inProgress => Colors.orange,
       TaskStatus.pending => colors.primary,
     };

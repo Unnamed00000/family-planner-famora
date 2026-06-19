@@ -118,8 +118,12 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canComplete =
-        (currentMember?.role.isAdmin == true || currentMember?.id == task.assignedToId) && task.status != TaskStatus.done;
+    final isAdmin = currentMember?.role.isAdmin == true;
+    final isAssignee = currentMember?.id == task.assignedToId;
+    final canWorkOnTask = (isAdmin || isAssignee) &&
+        task.status != TaskStatus.done &&
+        task.status != TaskStatus.awaitingApproval;
+    final canReviewTask = isAdmin && task.status == TaskStatus.awaitingApproval;
     final strings = AppStrings.of(context);
     return Card(
       child: Padding(
@@ -158,10 +162,11 @@ class _TaskCard extends StatelessWidget {
                 Chip(label: Text(strings.taskRecurrence(task.recurrence)), avatar: const Icon(Icons.repeat_rounded)),
               ],
             ),
-            if (canComplete) ...[
+            if (canWorkOnTask) ...[
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
                     onPressed:
@@ -170,22 +175,49 @@ class _TaskCard extends StatelessWidget {
                     label: Text(strings.start),
                   ),
                   FilledButton.icon(
-                    onPressed: task.status == TaskStatus.done
-                        ? null
-                        : () async {
-                            await familyRepository.markTask(task, TaskStatus.done);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    '+${strings.pointsAndMoney(task.points, pointValue)}',
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                    icon: const Icon(Icons.check_rounded),
-                    label: Text(strings.done),
+                    onPressed: () async {
+                      await familyRepository.markTask(task, TaskStatus.awaitingApproval);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(strings.taskSentForReview)),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.fact_check_rounded),
+                    label: Text(strings.sendForReview),
+                  ),
+                ],
+              ),
+            ],
+            if (canReviewTask) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () async {
+                      await familyRepository.markTask(task, TaskStatus.done);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('+${strings.pointsAndMoney(task.points, pointValue)}')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.verified_rounded),
+                    label: Text(strings.approveTask),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await familyRepository.markTask(task, TaskStatus.pending);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(strings.taskReturnedForRedo)),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.replay_rounded),
+                    label: Text(strings.redoTask),
                   ),
                 ],
               ),

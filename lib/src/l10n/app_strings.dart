@@ -120,6 +120,11 @@ class AppStrings {
   String get allStatuses => pick(ru: 'Все статусы', en: 'All statuses', da: 'Alle statusser');
   String get start => pick(ru: 'Начать', en: 'Start', da: 'Start');
   String get done => pick(ru: 'Готово', en: 'Done', da: 'Færdig');
+  String get sendForReview => pick(ru: 'На проверку', en: 'Send for review', da: 'Send til kontrol');
+  String get approveTask => pick(ru: 'Подтвердить', en: 'Approve', da: 'Godkend');
+  String get redoTask => pick(ru: 'Переделать', en: 'Redo', da: 'Lav igen');
+  String get taskSentForReview => pick(ru: 'Задача отправлена на проверку', en: 'Task sent for review', da: 'Opgave sendt til kontrol');
+  String get taskReturnedForRedo => pick(ru: 'Задача возвращена на переделку', en: 'Task returned for redo', da: 'Opgave sendt tilbage');
 
   String get daySummary => pick(ru: 'Итоги дня', en: 'Day summary', da: 'Dagens opsummering');
   String get weekSummary => pick(ru: 'Итоги недели', en: 'Week summary', da: 'Ugens opsummering');
@@ -307,6 +312,8 @@ class AppStrings {
         return pick(ru: 'Ожидает', en: 'Pending', da: 'Afventer');
       case TaskStatus.inProgress:
         return pick(ru: 'Выполняется', en: 'In progress', da: 'I gang');
+      case TaskStatus.awaitingApproval:
+        return pick(ru: 'На проверке', en: 'Needs approval', da: 'Til kontrol');
       case TaskStatus.done:
         return pick(ru: 'Выполнено', en: 'Done', da: 'Fuldført');
       case TaskStatus.overdue:
