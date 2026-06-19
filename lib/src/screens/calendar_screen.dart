@@ -410,6 +410,7 @@ class _MonthCalendar extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final weeks = _calendarWeeks(focusedMonth);
+    final weekdayLabels = _weekdayLabels(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -435,7 +436,7 @@ class _MonthCalendar extends StatelessWidget {
                   width: 40,
                   child: Center(
                     child: Text(
-                      '№',
+                      '#',
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: colors.onSurfaceVariant,
                         fontWeight: FontWeight.w800,
@@ -443,13 +444,13 @@ class _MonthCalendar extends StatelessWidget {
                     ),
                   ),
                 ),
-                for (final label in _weekdayLabels(context))
+                for (var index = 0; index < weekdayLabels.length; index++)
                   Expanded(
                     child: Center(
                       child: Text(
-                        label,
+                        weekdayLabels[index],
                         style: theme.textTheme.labelMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
+                          color: index >= 5 ? colors.error : colors.onSurfaceVariant,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -523,6 +524,7 @@ class _CalendarDayCell extends StatelessWidget {
     final selected = _sameDay(day!, selectedDay);
     final today = _sameDay(day!, DateTime.now());
     final outsideMonth = day!.month != focusedMonth.month;
+    final weekend = day!.weekday >= DateTime.saturday;
     return Padding(
       padding: const EdgeInsets.all(3),
       child: SizedBox(
@@ -554,7 +556,9 @@ class _CalendarDayCell extends StatelessWidget {
                           ? colors.onSurfaceVariant.withValues(alpha: 0.45)
                           : selected
                               ? colors.onPrimaryContainer
-                              : colors.onSurface,
+                              : weekend
+                                  ? colors.error
+                                  : colors.onSurface,
                     ),
                   ),
                 ),

@@ -40,6 +40,9 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         title: Text(strings.management),
         bottom: TabBar(
           controller: tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 14),
           tabs: [
             Tab(icon: const Icon(Icons.group_rounded), text: strings.members),
             Tab(icon: const Icon(Icons.add_task_rounded), text: strings.taskTab),
