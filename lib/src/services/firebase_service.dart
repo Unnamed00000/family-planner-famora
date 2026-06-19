@@ -11,6 +11,19 @@ import 'package:http/http.dart' as http;
 
 import '../../firebase_options.dart';
 import '../models/app_models.dart';
+import '../utils/photo_url.dart';
+
+class _TaskUpdateResult {
+  const _TaskUpdateResult({
+    this.createRecurringTask = false,
+    this.createReviewNotification = false,
+    this.clearReviewNotifications = false,
+  });
+
+  final bool createRecurringTask;
+  final bool createReviewNotification;
+  final bool clearReviewNotifications;
+}
 
 class AuthRepository {
   AuthRepository({
@@ -282,8 +295,9 @@ class FamilyRepository {
     String? photoUrl, {
     double photoZoom = 1,
   }) async {
+    final cleanPhotoUrl = normalizePhotoUrl(photoUrl ?? '');
     await _members.doc(memberId).update({
-      'photoUrl': photoUrl == null || photoUrl.trim().isEmpty ? null : photoUrl.trim(),
+      'photoUrl': cleanPhotoUrl.isEmpty ? null : cleanPhotoUrl,
       'photoZoom': photoZoom.clamp(1, 2),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -366,11 +380,11 @@ class FamilyRepository {
     final completed = status == TaskStatus.done;
     final taskRef = _tasks.doc(task.id);
     final memberRef = _members.doc(task.assignedToId);
-    final shouldCreateRecurringTask = await _firestore.runTransaction<bool>((transaction) async {
+    final result = await _firestore.runTransaction<_TaskUpdateResult>((transaction) async {
       final snapshot = await transaction.get(taskRef);
       final currentStatus = TaskStatusX.fromWire(snapshot.data()?['status'] as String?);
       if (currentStatus == TaskStatus.done && status != TaskStatus.done) {
-        return false;
+        return const _TaskUpdateResult();
       }
 
       transaction.update(taskRef, {
@@ -386,7 +400,18 @@ class FamilyRepository {
           'points': FieldValue.increment(task.points),
           'updatedAt': FieldValue.serverTimestamp(),
         });
-        return task.recurrence != TaskRecurrence.once;
+        return _TaskUpdateResult(
+          createRecurringTask: task.recurrence != TaskRecurrence.once,
+          clearReviewNotifications: true,
+        );
+      }
+
+      if (status == TaskStatus.awaitingApproval && currentStatus != TaskStatus.awaitingApproval) {
+        return const _TaskUpdateResult(createReviewNotification: true);
+      }
+
+      if (currentStatus == TaskStatus.awaitingApproval && status == TaskStatus.pending) {
+        return const _TaskUpdateResult(clearReviewNotifications: true);
       }
 
       if (status == TaskStatus.overdue && currentStatus != TaskStatus.overdue) {
@@ -395,10 +420,16 @@ class FamilyRepository {
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
-      return false;
+      return const _TaskUpdateResult();
     });
 
-    if (shouldCreateRecurringTask) {
+    if (result.createReviewNotification) {
+      await _createTaskReviewNotifications(task);
+    }
+    if (result.clearReviewNotifications) {
+      await acceptNotificationsForEntity(task.id);
+    }
+    if (result.createRecurringTask) {
       final nextTask = TaskItem(
         id: '',
         title: task.title,
@@ -414,6 +445,19 @@ class FamilyRepository {
       await _tasks.add(nextTask.toJson());
     }
     await writeHistory(status.name, 'task', task.title);
+  }
+
+  Future<void> _createTaskReviewNotifications(TaskItem task) async {
+    final admins = await _members.where('role', isEqualTo: 'admin').get();
+    for (final admin in admins.docs) {
+      await createNotification(
+        title: 'Проверить задачу',
+        body: '${task.title} — ребёнок отправил задачу на проверку. Подтверди и оплати или верни на переделку.',
+        assignedToId: admin.id,
+        type: 'task_review',
+        entityId: task.id,
+      );
+    }
   }
 
   DateTime _nextDueAt(DateTime current, TaskRecurrence recurrence) {

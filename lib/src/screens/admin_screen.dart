@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../l10n/app_strings.dart';
 import '../models/app_models.dart';
 import '../services/firebase_service.dart';
+import '../utils/photo_url.dart';
 import '../widgets/common.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -486,7 +487,7 @@ class _MembersAdmin extends StatelessWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          final previewUrl = controller.text.trim();
+          final previewUrl = normalizePhotoUrl(controller.text);
           return AlertDialog(
             title: Text('${strings.photoLink}: ${member.name}'),
             content: SizedBox(
@@ -669,7 +670,7 @@ class _MembersAdmin extends StatelessWidget {
         authUid: authUid,
         email: cleanEmail.isEmpty ? null : cleanEmail,
         localLogin: login.text.trim().isEmpty ? null : login.text.trim().toLowerCase(),
-        photoUrl: photoUrl.text.trim().isEmpty ? null : photoUrl.text.trim(),
+        photoUrl: normalizePhotoUrl(photoUrl.text).isEmpty ? null : normalizePhotoUrl(photoUrl.text),
         photoZoom: member?.photoZoom ?? 1,
         themeMode: member?.themeMode ?? ThemeMode.system,
         soundEnabled: member?.soundEnabled ?? true,
