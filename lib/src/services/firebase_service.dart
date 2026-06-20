@@ -314,7 +314,66 @@ class FamilyRepository {
 
   Future<void> saveTask(TaskItem task) async {
     final id = task.id.isEmpty ? _tasks.doc().id : task.id;
-    await _tasks.doc(id).set(task.toJson(), SetOptions(merge: true));
+    final now = DateTime.now();
+    final uid = _auth.currentUser?.uid;
+    final taskRef = _tasks.doc(id);
+    final memberRef = _members.doc(task.assignedToId);
+    final result = await _firestore.runTransaction<_TaskUpdateResult>((transaction) async {
+      final snapshot = await transaction.get(taskRef);
+      final currentData = snapshot.data();
+      final currentStatus = TaskStatusX.fromWire(currentData?['status'] as String?);
+      final taskData = task.toJson();
+
+      // Completed tasks are final: keep their completion metadata and avoid a
+      // second reward when an administrator later edits another task field.
+      if (currentStatus == TaskStatus.done) {
+        taskData['status'] = TaskStatus.done.name;
+        taskData['completedAt'] = currentData?['completedAt'];
+        taskData['completedBy'] = currentData?['completedBy'];
+        transaction.set(taskRef, taskData, SetOptions(merge: true));
+        return const _TaskUpdateResult();
+      }
+
+      final completed = task.status == TaskStatus.done;
+      if (completed) {
+        taskData['completedAt'] = Timestamp.fromDate(now);
+        taskData['completedBy'] = uid;
+      }
+      transaction.set(taskRef, taskData, SetOptions(merge: true));
+
+      if (completed) {
+        transaction.update(memberRef, {
+          'completedTasks': FieldValue.increment(1),
+          'points': FieldValue.increment(task.points),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        return _TaskUpdateResult(
+          createRecurringTask: task.recurrence != TaskRecurrence.once,
+          clearReviewNotifications: true,
+        );
+      }
+      return const _TaskUpdateResult();
+    });
+
+    if (result.clearReviewNotifications) {
+      await acceptNotificationsForEntity(id);
+    }
+    if (result.createRecurringTask) {
+      await _tasks.add(
+        TaskItem(
+          id: '',
+          title: task.title,
+          description: task.description,
+          assignedToId: task.assignedToId,
+          priority: task.priority,
+          dueAt: _nextDueAt(task.dueAt, task.recurrence),
+          recurrence: task.recurrence,
+          status: TaskStatus.pending,
+          points: task.points,
+          createdBy: task.createdBy,
+        ).toJson(),
+      );
+    }
     await writeHistory('save', 'task', task.title);
   }
 
