@@ -305,10 +305,12 @@ class _MembersAdmin extends StatelessWidget {
                   _PointValueCard(repository: repository),
                   const SizedBox(height: 12),
                   for (final member in members)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
@@ -371,6 +373,7 @@ class _MembersAdmin extends StatelessWidget {
                               ),
                             ),
                           ],
+                          ),
                         ),
                       ),
                     ),
