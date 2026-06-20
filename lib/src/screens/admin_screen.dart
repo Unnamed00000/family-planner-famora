@@ -306,40 +306,69 @@ class _MembersAdmin extends StatelessWidget {
                   const SizedBox(height: 12),
                   for (final member in members)
                     Card(
-                      child: ListTile(
-                        leading: MemberAvatar(member: member),
-                        title: Text(member.name),
-                        subtitle: Text(
-                          '${member.age} - ${member.localLogin ?? member.email ?? ''}\n'
-                          '${strings.pointsAndMoney(member.points, pointValue)}',
-                        ),
-                        isThreeLine: true,
-                        trailing: Wrap(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            IconButton(
-                              tooltip: strings.editPoints,
-                              onPressed: () => _editMemberPoints(context, member, pointValue),
-                              icon: const Icon(Icons.stars_rounded),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                MemberAvatar(member: member),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(member.name, style: Theme.of(context).textTheme.titleMedium),
+                                      const SizedBox(height: 2),
+                                      Text('${member.age} - ${member.localLogin ?? member.email ?? ''}'),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        strings.pointsAndMoney(member.points, pointValue),
+                                        style: Theme.of(context).textTheme.bodyMedium,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              tooltip: strings.photo,
-                              onPressed: () => _uploadPhoto(context, member),
-                              icon: const Icon(Icons.photo_camera_rounded),
-                            ),
-                            IconButton(
-                              tooltip: strings.usePhotoLink,
-                              onPressed: () => _setPhotoLink(context, member),
-                              icon: const Icon(Icons.link_rounded),
-                            ),
-                            IconButton(
-                              tooltip: strings.edit,
-                              onPressed: () => _editMember(context, member),
-                              icon: const Icon(Icons.edit_rounded),
-                            ),
-                            IconButton(
-                              tooltip: strings.delete,
-                              onPressed: () => repository.deleteMember(member.id),
-                              icon: const Icon(Icons.delete_rounded),
+                            const SizedBox(height: 10),
+                            const Divider(height: 1),
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Wrap(
+                                spacing: 2,
+                                runSpacing: 2,
+                                children: [
+                                  IconButton(
+                                    tooltip: strings.editPoints,
+                                    onPressed: () => _editMemberPoints(context, member, pointValue),
+                                    icon: const Icon(Icons.stars_rounded),
+                                  ),
+                                  IconButton(
+                                    tooltip: strings.photo,
+                                    onPressed: () => _uploadPhoto(context, member),
+                                    icon: const Icon(Icons.photo_camera_rounded),
+                                  ),
+                                  IconButton(
+                                    tooltip: strings.usePhotoLink,
+                                    onPressed: () => _setPhotoLink(context, member),
+                                    icon: const Icon(Icons.link_rounded),
+                                  ),
+                                  IconButton(
+                                    tooltip: strings.edit,
+                                    onPressed: () => _editMember(context, member),
+                                    icon: const Icon(Icons.edit_rounded),
+                                  ),
+                                  IconButton(
+                                    tooltip: strings.delete,
+                                    onPressed: () => repository.deleteMember(member.id),
+                                    icon: const Icon(Icons.delete_rounded),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
