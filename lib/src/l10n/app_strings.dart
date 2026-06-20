@@ -288,6 +288,8 @@ class AppStrings {
   String get savePointValue => pick(ru: 'Сохранить цену балла', en: 'Save point value', da: 'Gem pointværdi');
   String get uploadProgress => pick(ru: 'Загрузка фото', en: 'Photo upload', da: 'Foto upload');
   String get photoZoom => pick(ru: 'Масштаб фото', en: 'Photo zoom', da: 'Foto zoom');
+  String get photoMoveHorizontal => pick(ru: 'Сдвинуть фото влево или вправо', en: 'Move photo left or right', da: 'Flyt foto til venstre eller højre');
+  String get photoMoveVertical => pick(ru: 'Сдвинуть фото вверх или вниз', en: 'Move photo up or down', da: 'Flyt foto op eller ned');
   String get choosePhotoFraming => pick(ru: 'Выбери приближение фото', en: 'Choose photo framing', da: 'Vælg fotoudsnit');
   String activityReminder(String title) => pick(
         ru: 'Напоминание: пора выходить на "$title".',

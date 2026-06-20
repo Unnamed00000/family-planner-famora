@@ -240,6 +240,8 @@ class FamilyRepository {
     Uint8List bytes,
     String contentType, {
     double photoZoom = 1,
+    double photoOffsetX = 0,
+    double photoOffsetY = 0,
     void Function(double progress)? onProgress,
   }) async {
     final ref = _storage.ref('member_photos/$memberId/profile');
@@ -270,6 +272,8 @@ class FamilyRepository {
     await _members.doc(memberId).update({
       'photoUrl': url,
       'photoZoom': photoZoom,
+      'photoOffsetX': photoOffsetX.clamp(-1, 1),
+      'photoOffsetY': photoOffsetY.clamp(-1, 1),
       'updatedAt': FieldValue.serverTimestamp(),
     });
     await writeHistory('upload_photo', 'member', memberId);
@@ -294,11 +298,15 @@ class FamilyRepository {
     String memberId,
     String? photoUrl, {
     double photoZoom = 1,
+    double photoOffsetX = 0,
+    double photoOffsetY = 0,
   }) async {
     final cleanPhotoUrl = normalizePhotoUrl(photoUrl ?? '');
     await _members.doc(memberId).update({
       'photoUrl': cleanPhotoUrl.isEmpty ? null : cleanPhotoUrl,
       'photoZoom': photoZoom.clamp(1, 2),
+      'photoOffsetX': photoOffsetX.clamp(-1, 1),
+      'photoOffsetY': photoOffsetY.clamp(-1, 1),
       'updatedAt': FieldValue.serverTimestamp(),
     });
     await writeHistory('set_photo_url', 'member', memberId);

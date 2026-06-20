@@ -47,6 +47,8 @@ service cloud.firestore {
           'fcmToken',
           'photoUrl',
           'photoZoom',
+          'photoOffsetX',
+          'photoOffsetY',
           'themeMode',
           'soundEnabled',
           'vibrationEnabled'

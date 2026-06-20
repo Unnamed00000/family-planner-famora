@@ -141,6 +141,8 @@ class FamilyMember {
     this.localLogin,
     this.photoUrl,
     this.photoZoom = 1,
+    this.photoOffsetX = 0,
+    this.photoOffsetY = 0,
     this.themeMode = ThemeMode.system,
     this.soundEnabled = true,
     this.vibrationEnabled = true,
@@ -160,6 +162,8 @@ class FamilyMember {
   final String? localLogin;
   final String? photoUrl;
   final double photoZoom;
+  final double photoOffsetX;
+  final double photoOffsetY;
   final ThemeMode themeMode;
   final bool soundEnabled;
   final bool vibrationEnabled;
@@ -214,6 +218,8 @@ class FamilyMember {
       localLogin: data['localLogin'] as String?,
       photoUrl: data['photoUrl'] as String?,
       photoZoom: (data['photoZoom'] as num?)?.toDouble() ?? 1,
+      photoOffsetX: (data['photoOffsetX'] as num?)?.toDouble() ?? 0,
+      photoOffsetY: (data['photoOffsetY'] as num?)?.toDouble() ?? 0,
       themeMode: _themeModeFromWire(data['themeMode'] as String?),
       soundEnabled: data['soundEnabled'] as bool? ?? true,
       vibrationEnabled: data['vibrationEnabled'] as bool? ?? true,
@@ -235,6 +241,8 @@ class FamilyMember {
       'localLogin': localLogin,
       'photoUrl': photoUrl,
       'photoZoom': photoZoom,
+      'photoOffsetX': photoOffsetX,
+      'photoOffsetY': photoOffsetY,
       'themeMode': themeMode.name,
       'soundEnabled': soundEnabled,
       'vibrationEnabled': vibrationEnabled,

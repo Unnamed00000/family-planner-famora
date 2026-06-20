@@ -216,6 +216,8 @@ class ProfileScreen extends StatelessWidget {
       return;
     }
     var zoom = member.photoZoom;
+    var offsetX = member.photoOffsetX;
+    var offsetY = member.photoOffsetY;
     var progress = 0.0;
     var uploading = false;
     await showDialog<void>(
@@ -229,29 +231,29 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: familyMemberColor(member), width: 3),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Transform.scale(
-                    scale: zoom,
-                    child: Image.memory(bytes, fit: BoxFit.cover),
-                  ),
+                PhotoFramingPreview(
+                  color: familyMemberColor(member),
+                  zoom: zoom,
+                  offsetX: offsetX,
+                  offsetY: offsetY,
+                  image: Image.memory(bytes, fit: BoxFit.cover),
+                  onPositionChanged: uploading
+                      ? null
+                      : (offset) => setDialogState(() {
+                            offsetX = offset.dx;
+                            offsetY = offset.dy;
+                          }),
                 ),
                 const SizedBox(height: 16),
-                Slider(
-                  value: zoom,
-                  min: 1,
-                  max: 2,
-                  divisions: 10,
-                  label: zoom.toStringAsFixed(1),
-                  onChanged: uploading ? null : (value) => setDialogState(() => zoom = value),
+                PhotoFramingControls(
+                  strings: strings,
+                  zoom: zoom,
+                  offsetX: offsetX,
+                  offsetY: offsetY,
+                  onZoomChanged: uploading ? null : (value) => setDialogState(() => zoom = value),
+                  onOffsetXChanged: uploading ? null : (value) => setDialogState(() => offsetX = value),
+                  onOffsetYChanged: uploading ? null : (value) => setDialogState(() => offsetY = value),
                 ),
-                Text(strings.photoZoom),
                 if (uploading) ...[
                   const SizedBox(height: 12),
                   LinearProgressIndicator(value: progress == 0 ? null : progress),
@@ -277,6 +279,8 @@ class ProfileScreen extends StatelessWidget {
                           bytes,
                           image.mimeType ?? 'image/jpeg',
                           photoZoom: zoom,
+                          photoOffsetX: offsetX,
+                          photoOffsetY: offsetY,
                           onProgress: (value) {
                             if (dialogContext.mounted) {
                               setDialogState(() => progress = value);
@@ -307,6 +311,8 @@ class ProfileScreen extends StatelessWidget {
     final strings = AppStrings.of(context);
     final controller = TextEditingController(text: member.photoUrl ?? '');
     var zoom = member.photoZoom.clamp(1, 2).toDouble();
+    var offsetX = member.photoOffsetX;
+    var offsetY = member.photoOffsetY;
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -319,15 +325,16 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: familyMemberColor(member), width: 3),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: previewUrl.isEmpty
+                  PhotoFramingPreview(
+                    color: familyMemberColor(member),
+                    zoom: zoom,
+                    offsetX: offsetX,
+                    offsetY: offsetY,
+                    onPositionChanged: (offset) => setDialogState(() {
+                      offsetX = offset.dx;
+                      offsetY = offset.dy;
+                    }),
+                    image: previewUrl.isEmpty
                         ? Center(
                             child: Icon(
                               Icons.person_rounded,
@@ -335,17 +342,14 @@ class ProfileScreen extends StatelessWidget {
                               color: familyMemberColor(member),
                             ),
                           )
-                        : Transform.scale(
-                            scale: zoom,
-                            child: Image.network(
-                              previewUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Center(
-                                child: Icon(
-                                  Icons.broken_image_rounded,
-                                  size: 64,
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
+                        : Image.network(
+                            previewUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Center(
+                              child: Icon(
+                                Icons.broken_image_rounded,
+                                size: 64,
+                                color: Theme.of(context).colorScheme.error,
                               ),
                             ),
                           ),
@@ -362,15 +366,15 @@ class ProfileScreen extends StatelessWidget {
                     onChanged: (_) => setDialogState(() {}),
                   ),
                   const SizedBox(height: 16),
-                  Slider(
-                    value: zoom,
-                    min: 1,
-                    max: 2,
-                    divisions: 10,
-                    label: zoom.toStringAsFixed(1),
-                    onChanged: (value) => setDialogState(() => zoom = value),
+                  PhotoFramingControls(
+                    strings: strings,
+                    zoom: zoom,
+                    offsetX: offsetX,
+                    offsetY: offsetY,
+                    onZoomChanged: (value) => setDialogState(() => zoom = value),
+                    onOffsetXChanged: (value) => setDialogState(() => offsetX = value),
+                    onOffsetYChanged: (value) => setDialogState(() => offsetY = value),
                   ),
-                  Text(strings.photoZoom),
                 ],
               ),
             ),
@@ -389,6 +393,8 @@ class ProfileScreen extends StatelessWidget {
       member.id,
       controller.text.trim(),
       photoZoom: zoom,
+      photoOffsetX: offsetX,
+      photoOffsetY: offsetY,
     );
   }
 }

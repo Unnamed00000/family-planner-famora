@@ -126,19 +126,134 @@ class MemberAvatar extends StatelessWidget {
                 style: TextStyle(color: color, fontWeight: FontWeight.w800),
               ),
             )
-          : Transform.scale(
-              scale: member.photoZoom.clamp(1, 2),
-              child: Image.network(
-                member.photoUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Center(
-                  child: Text(
-                    member.name.characters.first.toUpperCase(),
-                    style: TextStyle(color: color, fontWeight: FontWeight.w800),
+          : Transform.translate(
+              offset: Offset(member.photoOffsetX * radius, member.photoOffsetY * radius),
+              child: Transform.scale(
+                scale: member.photoZoom.clamp(1, 2),
+                child: Image.network(
+                  member.photoUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Center(
+                    child: Text(
+                      member.name.characters.first.toUpperCase(),
+                      style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                    ),
                   ),
                 ),
               ),
             ),
+    );
+  }
+}
+
+class PhotoFramingPreview extends StatelessWidget {
+  const PhotoFramingPreview({
+    required this.color,
+    required this.zoom,
+    required this.offsetX,
+    required this.offsetY,
+    required this.image,
+    this.onPositionChanged,
+    super.key,
+  });
+
+  final Color color;
+  final double zoom;
+  final double offsetX;
+  final double offsetY;
+  final Widget image;
+  final ValueChanged<Offset>? onPositionChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 180,
+      height: 180,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: color, width: 3),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: GestureDetector(
+        onPanUpdate: onPositionChanged == null
+            ? null
+            : (details) => onPositionChanged!(
+                  Offset(
+                    (offsetX + details.delta.dx / 90).clamp(-1, 1).toDouble(),
+                    (offsetY + details.delta.dy / 90).clamp(-1, 1).toDouble(),
+                  ),
+                ),
+        child: Transform.translate(
+          offset: Offset(offsetX * 90, offsetY * 90),
+          child: Transform.scale(scale: zoom.clamp(1, 2), child: image),
+        ),
+      ),
+    );
+  }
+}
+
+class PhotoFramingControls extends StatelessWidget {
+  const PhotoFramingControls({
+    required this.strings,
+    required this.zoom,
+    required this.offsetX,
+    required this.offsetY,
+    required this.onZoomChanged,
+    required this.onOffsetXChanged,
+    required this.onOffsetYChanged,
+    super.key,
+  });
+
+  final AppStrings strings;
+  final double zoom;
+  final double offsetX;
+  final double offsetY;
+  final ValueChanged<double>? onZoomChanged;
+  final ValueChanged<double>? onOffsetXChanged;
+  final ValueChanged<double>? onOffsetYChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Slider(
+          value: zoom,
+          min: 1,
+          max: 2,
+          divisions: 10,
+          label: zoom.toStringAsFixed(1),
+          onChanged: onZoomChanged,
+        ),
+        Text(strings.photoZoom),
+        Row(
+          children: [
+            Tooltip(message: strings.photoMoveHorizontal, child: const Icon(Icons.swap_horiz_rounded)),
+            Expanded(
+              child: Slider(
+                value: offsetX,
+                min: -1,
+                max: 1,
+                divisions: 20,
+                onChanged: onOffsetXChanged,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Tooltip(message: strings.photoMoveVertical, child: const Icon(Icons.swap_vert_rounded)),
+            Expanded(
+              child: Slider(
+                value: offsetY,
+                min: -1,
+                max: 1,
+                divisions: 20,
+                onChanged: onOffsetYChanged,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
