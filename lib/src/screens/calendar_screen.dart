@@ -182,10 +182,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _createTaskForDay(BuildContext context, DateTime day, List<FamilyMember> members) async {
     final strings = AppStrings.of(context);
+    final configuredPointValue = (await widget.familyRepository.watchAppSettings().first).pointValueDkk;
+    if (!context.mounted) {
+      return;
+    }
+    final pointValue = configuredPointValue > 0 ? configuredPointValue : 1.0;
     final title = TextEditingController();
     final description = TextEditingController();
     final points = TextEditingController(text: '5');
+    final rewardDkk = TextEditingController(text: (5 * pointValue).toStringAsFixed(2));
     final participantLimit = TextEditingController(text: '1');
+    var syncingReward = false;
+    void syncDkkFromPoints(String value) {
+      if (syncingReward) {
+        return;
+      }
+      final parsedPoints = int.tryParse(value);
+      if (parsedPoints == null) {
+        return;
+      }
+      syncingReward = true;
+      rewardDkk.text = (parsedPoints * pointValue).toStringAsFixed(2);
+      syncingReward = false;
+    }
+
+    void syncPointsFromDkk(String value) {
+      if (syncingReward) {
+        return;
+      }
+      final parsedDkk = double.tryParse(value.replaceAll(',', '.'));
+      if (parsedDkk == null) {
+        return;
+      }
+      final calculatedPoints = (parsedDkk / pointValue).round().clamp(0, 999999).toInt();
+      syncingReward = true;
+      points.text = calculatedPoints.toString();
+      rewardDkk.text = (calculatedPoints * pointValue).toStringAsFixed(2);
+      syncingReward = false;
+    }
     final selectedIds = <String>{};
     var dueAt = DateTime(day.year, day.month, day.day, DateTime.now().hour + 1, 0);
     var priority = TaskPriority.normal;
@@ -207,7 +241,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   controller: points,
                   decoration: InputDecoration(labelText: strings.points),
                   keyboardType: TextInputType.number,
+                  onChanged: syncDkkFromPoints,
                 ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: rewardDkk,
+                  decoration: InputDecoration(labelText: strings.totalRewardDkk),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: syncPointsFromDkk,
+                ),
+                const SizedBox(height: 4),
+                Text(strings.rewardInputHint, style: Theme.of(dialogContext).textTheme.bodySmall),
                 const SizedBox(height: 10),
                 TextField(
                   controller: participantLimit,

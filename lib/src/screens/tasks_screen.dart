@@ -129,7 +129,7 @@ class _TaskCard extends StatelessWidget {
     final hasCompleted = currentMemberId != null && task.hasCompleted(currentMemberId);
     final canClaimOpenTask = !isAdmin && currentMember != null && task.canBeClaimed && !isParticipant;
     final canWorkOnTask = isParticipant && !hasCompleted && !task.isDone;
-    final canReviewTask = isAdmin && task.completedBy.any((memberId) => !task.hasApproved(memberId));
+    final canReviewTask = isAdmin && task.completedBy.isNotEmpty && !task.isDone;
     final participantNames = task.participantIds
         .map((memberId) => members[memberId]?.name ?? memberId)
         .join(', ');
@@ -234,32 +234,26 @@ class _TaskCard extends StatelessWidget {
                       ? const CircleAvatar(child: Icon(Icons.person_rounded))
                       : MemberAvatar(member: members[memberId]!, radius: 18),
                   title: Text(members[memberId]?.name ?? memberId),
-                  subtitle: Text(task.hasApproved(memberId) ? strings.participantApproved : strings.taskSentForReview),
-                  trailing: task.hasApproved(memberId)
-                      ? const Icon(Icons.verified_rounded, color: Colors.green)
-                      : Wrap(
-                          spacing: 4,
-                          children: [
-                            IconButton(
-                              tooltip: strings.redoTask,
-                              onPressed: () => familyRepository.returnTaskForRedo(task, memberId),
-                              icon: const Icon(Icons.replay_rounded),
-                            ),
-                            IconButton(
-                              tooltip: strings.approveParticipant,
-                              onPressed: () async {
-                                final paid = await familyRepository.approveTaskParticipant(task, memberId);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(paid ? strings.payoutComplete : strings.payoutWaiting)),
-                                  );
-                                }
-                              },
-                              icon: const Icon(Icons.verified_rounded),
-                            ),
-                          ],
-                        ),
+                  subtitle: Text(strings.taskSentForReview),
+                  trailing: IconButton(
+                    tooltip: strings.redoTask,
+                    onPressed: () => familyRepository.returnTaskForRedo(task, memberId),
+                    icon: const Icon(Icons.replay_rounded),
+                  ),
                 ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: () async {
+                  final approvedCount = await familyRepository.approveCompletedTask(task);
+                  if (context.mounted && approvedCount > 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(strings.payoutComplete)),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.verified_rounded),
+                label: Text(strings.approveCompletedAndPay),
+              ),
             ],
           ],
         ),

@@ -414,28 +414,24 @@ class FamilyRepository {
     return completed;
   }
 
-  Future<bool> approveTaskParticipant(TaskItem task, String memberId) async {
+  Future<int> approveCompletedTask(TaskItem task) async {
     final taskRef = _tasks.doc(task.id);
-    final paid = await _firestore.runTransaction<bool>((transaction) async {
+    final approvedCount = await _firestore.runTransaction<int>((transaction) async {
       final snapshot = await transaction.get(taskRef);
       if (!snapshot.exists) {
-        return false;
+        return 0;
       }
       final current = TaskItem.fromDoc(snapshot);
-      if (!current.hasCompleted(memberId) || current.hasApproved(memberId) || current.isDone) {
-        return false;
+      if (current.completedBy.isEmpty || current.isDone) {
+        return 0;
       }
-      final approvedBy = [...current.approvedBy, memberId];
-      final isReadyForPayout = current.participantIds.isNotEmpty && current.participantIds.every(approvedBy.contains);
+      final approvedBy = current.completedBy.toSet().toList();
       transaction.update(taskRef, {
         'approvedBy': approvedBy,
-        'status': isReadyForPayout ? TaskStatus.done.name : TaskStatus.awaitingApproval.name,
-        if (isReadyForPayout) 'completedAt': Timestamp.fromDate(DateTime.now()),
+        'status': TaskStatus.done.name,
+        'completedAt': Timestamp.fromDate(DateTime.now()),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      if (!isReadyForPayout) {
-        return false;
-      }
       final basePoints = current.points ~/ approvedBy.length;
       final remainder = current.points % approvedBy.length;
       for (var index = 0; index < approvedBy.length; index++) {
@@ -445,19 +441,17 @@ class FamilyRepository {
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
-      return true;
+      return approvedBy.length;
     });
 
-    if (paid) {
+    if (approvedCount > 0) {
       await acceptNotificationsForEntity(task.id);
       if (task.recurrence != TaskRecurrence.once) {
         await _createRecurringTask(task);
       }
       await writeHistory('approve_and_pay', 'task', task.title);
-    } else {
-      await writeHistory('approve', 'task', task.title);
     }
-    return paid;
+    return approvedCount;
   }
 
   Future<void> returnTaskForRedo(TaskItem task, String memberId) async {
