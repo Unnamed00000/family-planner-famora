@@ -71,6 +71,26 @@ service cloud.firestore {
         && isMemberSelf(request.resource.data.assignedToId)
         && request.resource.data.status == 'inProgress'
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['assignedToId', 'status', 'updatedAt']);
+      allow update: if signedIn()
+        && resource.data.assignedToId == ''
+        && (resource.data.status == 'pending' || resource.data.status == 'inProgress')
+        && resource.data.completedBy.size() == 0
+        && resource.data.approvedBy.size() == 0
+        && request.resource.data.participantIds.size() == resource.data.participantIds.size() + 1
+        && request.resource.data.participantIds.hasAll(resource.data.participantIds)
+        && request.resource.data.completedBy == resource.data.completedBy
+        && request.resource.data.approvedBy == resource.data.approvedBy
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['participantIds', 'status', 'updatedAt']);
+      allow update: if signedIn()
+        && resource.data.assignedToId == ''
+        && resource.data.status != 'done'
+        && request.resource.data.participantIds == resource.data.participantIds
+        && request.resource.data.completedBy.size() == resource.data.completedBy.size() + 1
+        && request.resource.data.completedBy.hasAll(resource.data.completedBy)
+        && request.resource.data.completedBy.hasOnly(resource.data.participantIds)
+        && request.resource.data.approvedBy == resource.data.approvedBy
+        && request.resource.data.status == 'awaitingApproval'
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['completedBy', 'status', 'updatedAt']);
     }
 
     match /announcements/{announcementId} {

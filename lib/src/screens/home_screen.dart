@@ -41,8 +41,8 @@ class HomeScreen extends StatelessWidget {
               final todayTasks = tasks.where((task) => task.isToday).toList();
               final leader = _leader(members, todayTasks);
               final notDone = members.where((member) {
-                final memberTasks = todayTasks.where((task) => task.assignedToId == member.id);
-                return memberTasks.any((task) => !task.isDone);
+                final memberTasks = todayTasks.where((task) => task.isParticipant(member.id));
+                return memberTasks.any((task) => !task.isCompletedFor(member.id));
               }).toList();
               return StreamBuilder<AppSettings>(
                 stream: familyRepository.watchAppSettings(),
@@ -89,12 +89,11 @@ class HomeScreen extends StatelessWidget {
                         itemCount: members.length,
                         itemBuilder: (context, index) {
                           final member = members[index];
-                          final memberTasks = todayTasks.where((task) => task.assignedToId == member.id).toList();
-                          final done = memberTasks.where((task) => task.isDone).length;
+                          final memberTasks = todayTasks.where((task) => task.isParticipant(member.id)).toList();
+                          final done = memberTasks.where((task) => task.isCompletedFor(member.id)).length;
                           final percent = memberTasks.isEmpty ? 0.0 : done / memberTasks.length;
                           final todayPoints = memberTasks
-                              .where((task) => task.isDone)
-                              .fold<int>(0, (sum, task) => sum + task.points);
+                              .fold<int>(0, (sum, task) => sum + task.pointsForApprovedMember(member.id));
                           return Card(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
@@ -182,7 +181,7 @@ class HomeScreen extends StatelessWidget {
     FamilyMember? best;
     var bestDone = -1;
     for (final member in members) {
-      final done = todayTasks.where((task) => task.assignedToId == member.id && task.isDone).length;
+      final done = todayTasks.where((task) => task.isCompletedFor(member.id)).length;
       if (done > bestDone) {
         best = member;
         bestDone = done;

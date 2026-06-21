@@ -107,7 +107,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               leading: Icon(task.status.icon, color: task.priority.color),
                               title: Text(task.title),
                               subtitle: Text(
-                                '${members[task.assignedToId]?.name ?? strings.noAssignee} - '
+                                '${task.participantIds.isEmpty ? strings.noAssignee : task.participantIds.map((id) => members[id]?.name ?? id).join(', ')} - '
                                 '${timeFormat.format(task.dueAt)}',
                               ),
                               trailing: TaskStatusChip(status: task.status),
@@ -185,6 +185,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final title = TextEditingController();
     final description = TextEditingController();
     final points = TextEditingController(text: '5');
+    final participantLimit = TextEditingController(text: '1');
     final selectedIds = <String>{};
     var dueAt = DateTime(day.year, day.month, day.day, DateTime.now().hour + 1, 0);
     var priority = TaskPriority.normal;
@@ -205,6 +206,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 TextField(
                   controller: points,
                   decoration: InputDecoration(labelText: strings.points),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: participantLimit,
+                  decoration: InputDecoration(labelText: strings.participantLimit),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 10),
@@ -263,7 +270,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (saved != true || title.text.trim().isEmpty) {
       return;
     }
-    for (final memberId in selectedIds.isEmpty ? <String>[''] : selectedIds) {
+    final isOpenTask = selectedIds.isEmpty;
+    final limit = (int.tryParse(participantLimit.text) ?? 1).clamp(1, 99).toInt();
+    for (final memberId in isOpenTask ? <String>[''] : selectedIds) {
       await widget.familyRepository.saveTask(
         TaskItem(
           id: '',
@@ -275,6 +284,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           recurrence: recurrence,
           status: TaskStatus.pending,
           points: int.tryParse(points.text.trim()) ?? 5,
+          participantLimit: isOpenTask ? limit : 1,
+          participantIds: isOpenTask ? const [] : [memberId],
           createdBy: widget.currentMember?.id,
         ),
       );

@@ -805,7 +805,7 @@ class _TasksAdmin extends StatelessWidget {
                       leading: Icon(task.status.icon, color: task.priority.color),
                       title: Text(task.title),
                       subtitle: Text(
-                        '${membersById[task.assignedToId]?.name ?? strings.noAssignee} - '
+                        '${task.participantIds.isEmpty ? strings.noAssignee : task.participantIds.map((id) => membersById[id]?.name ?? id).join(', ')} - '
                         '${dateFormat.format(task.dueAt)} ${timeFormat.format(task.dueAt)}',
                       ),
                       trailing: Wrap(
@@ -837,6 +837,7 @@ class _TasksAdmin extends StatelessWidget {
     final title = TextEditingController(text: task?.title ?? '');
     final description = TextEditingController(text: task?.description ?? '');
     final points = TextEditingController(text: (task?.points ?? 5).toString());
+    final participantLimit = TextEditingController(text: (task?.participantLimit ?? 1).toString());
     final selectedAssigneeIds = <String>{
       if ((task?.assignedToId ?? '').isNotEmpty) task!.assignedToId,
     };
@@ -858,6 +859,12 @@ class _TasksAdmin extends StatelessWidget {
                 TextField(controller: description, decoration: InputDecoration(labelText: strings.description)),
                 const SizedBox(height: 10),
                 TextField(controller: points, decoration: InputDecoration(labelText: strings.points), keyboardType: TextInputType.number),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: participantLimit,
+                  decoration: InputDecoration(labelText: strings.participantLimit),
+                  keyboardType: TextInputType.number,
+                ),
                 const SizedBox(height: 10),
                 _AssigneeSelector(
                   members: members,
@@ -935,7 +942,12 @@ class _TasksAdmin extends StatelessWidget {
     if (saved != true) {
       return;
     }
-    final assigneeIds = selectedAssigneeIds.isEmpty ? <String>[''] : selectedAssigneeIds.toList();
+    final isOpenTask = selectedAssigneeIds.isEmpty;
+    final assigneeIds = isOpenTask ? <String>[''] : selectedAssigneeIds.toList();
+    final requestedLimit = (int.tryParse(participantLimit.text) ?? 1).clamp(1, 99).toInt();
+    final limit = requestedLimit < (task?.participantIds.length ?? 0)
+        ? task!.participantIds.length
+        : requestedLimit;
     for (var index = 0; index < assigneeIds.length; index++) {
       await repository.saveTask(
         TaskItem(
@@ -948,6 +960,8 @@ class _TasksAdmin extends StatelessWidget {
           recurrence: recurrence,
           status: status,
           points: int.tryParse(points.text) ?? 5,
+          participantLimit: isOpenTask ? limit : 1,
+          participantIds: isOpenTask ? const [] : [assigneeIds[index]],
           createdBy: task?.createdBy ?? currentMember?.id,
           createdAt: index == 0 ? task?.createdAt : null,
         ),

@@ -88,7 +88,7 @@ class _TasksScreenState extends State<TasksScreen> {
                             padding: const EdgeInsets.only(bottom: 10),
                             child: _TaskCard(
                               task: task,
-                              member: members[task.assignedToId],
+                              members: members,
                               currentMember: widget.currentMember,
                               familyRepository: widget.familyRepository,
                               pointValue: pointValue,
@@ -109,14 +109,14 @@ class _TasksScreenState extends State<TasksScreen> {
 class _TaskCard extends StatelessWidget {
   const _TaskCard({
     required this.task,
-    required this.member,
+    required this.members,
     required this.currentMember,
     required this.familyRepository,
     required this.pointValue,
   });
 
   final TaskItem task;
-  final FamilyMember? member;
+  final Map<String, FamilyMember> members;
   final FamilyMember? currentMember;
   final FamilyRepository familyRepository;
   final double pointValue;
@@ -124,12 +124,17 @@ class _TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAdmin = currentMember?.role.isAdmin == true;
-    final isAssignee = currentMember?.id == task.assignedToId;
-    final canClaimOpenTask = !isAdmin && currentMember != null && task.isOpenTask && task.status == TaskStatus.pending;
-    final canWorkOnTask = (isAdmin || isAssignee) &&
-        task.status != TaskStatus.done &&
-        task.status != TaskStatus.awaitingApproval;
-    final canReviewTask = isAdmin && task.status == TaskStatus.awaitingApproval;
+    final currentMemberId = currentMember?.id;
+    final isParticipant = currentMemberId != null && task.isParticipant(currentMemberId);
+    final hasCompleted = currentMemberId != null && task.hasCompleted(currentMemberId);
+    final canClaimOpenTask = !isAdmin && currentMember != null && task.canBeClaimed && !isParticipant;
+    final canWorkOnTask = isParticipant && !hasCompleted && !task.isDone;
+    final canReviewTask = isAdmin && task.completedBy.any((memberId) => !task.hasApproved(memberId));
+    final participantNames = task.participantIds
+        .map((memberId) => members[memberId]?.name ?? memberId)
+        .join(', ');
+    final firstParticipant = task.participantIds.isEmpty ? null : members[task.participantIds.first];
+    final rewardColor = firstParticipant == null ? null : familyMemberColor(firstParticipant);
     final strings = AppStrings.of(context);
     return Card(
       child: Padding(
@@ -154,7 +159,7 @@ class _TaskCard extends StatelessWidget {
               points: task.points,
               pointValue: pointValue,
               label: strings.points,
-              color: member == null ? null : familyMemberColor(member!),
+              color: rewardColor,
               compact: true,
             ),
             const SizedBox(height: 10),
@@ -162,7 +167,14 @@ class _TaskCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text(member?.name ?? strings.noAssignee), avatar: const Icon(Icons.person_rounded)),
+                Chip(
+                  label: Text(participantNames.isEmpty ? strings.noAssignee : participantNames),
+                  avatar: const Icon(Icons.group_rounded),
+                ),
+                Chip(
+                  label: Text(strings.participantProgress(task.participantIds.length, task.participantLimit)),
+                  avatar: const Icon(Icons.people_alt_rounded),
+                ),
                 Chip(label: Text(dateFormat.format(task.dueAt)), avatar: const Icon(Icons.event_rounded)),
                 Chip(label: Text(timeFormat.format(task.dueAt)), avatar: const Icon(Icons.schedule_rounded)),
                 Chip(label: Text(strings.taskRecurrence(task.recurrence)), avatar: const Icon(Icons.repeat_rounded)),
@@ -192,57 +204,62 @@ class _TaskCard extends StatelessWidget {
                 children: [
                   OutlinedButton.icon(
                     onPressed:
-                        task.status == TaskStatus.inProgress ? null : () => familyRepository.markTask(task, TaskStatus.inProgress),
+                        task.status == TaskStatus.pending ? () => familyRepository.startTask(task, currentMemberId) : null,
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: Text(strings.start),
                   ),
                   FilledButton.icon(
                     onPressed: () async {
-                      await familyRepository.markTask(task, TaskStatus.awaitingApproval);
+                      final completed = await familyRepository.completeTask(task, currentMember!);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(strings.taskSentForReview)),
+                          SnackBar(content: Text(completed ? strings.taskSentForReview : strings.taskAlreadyClaimed)),
                         );
                       }
                     },
                     icon: const Icon(Icons.fact_check_rounded),
-                    label: Text(strings.sendForReview),
+                    label: Text(strings.completeTask),
                   ),
                 ],
               ),
             ],
             if (canReviewTask) ...[
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () async {
-                      await familyRepository.markTask(task, TaskStatus.done);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('+${strings.pointsAndMoney(task.points, pointValue)}')),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.verified_rounded),
-                    label: Text(strings.approveTask),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      await familyRepository.markTask(task, TaskStatus.pending);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(strings.taskReturnedForRedo)),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.replay_rounded),
-                    label: Text(strings.redoTask),
-                  ),
-                ],
-              ),
+              Text(strings.participants, style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 4),
+              for (final memberId in task.completedBy)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: members[memberId] == null
+                      ? const CircleAvatar(child: Icon(Icons.person_rounded))
+                      : MemberAvatar(member: members[memberId]!, radius: 18),
+                  title: Text(members[memberId]?.name ?? memberId),
+                  subtitle: Text(task.hasApproved(memberId) ? strings.participantApproved : strings.taskSentForReview),
+                  trailing: task.hasApproved(memberId)
+                      ? const Icon(Icons.verified_rounded, color: Colors.green)
+                      : Wrap(
+                          spacing: 4,
+                          children: [
+                            IconButton(
+                              tooltip: strings.redoTask,
+                              onPressed: () => familyRepository.returnTaskForRedo(task, memberId),
+                              icon: const Icon(Icons.replay_rounded),
+                            ),
+                            IconButton(
+                              tooltip: strings.approveParticipant,
+                              onPressed: () async {
+                                final paid = await familyRepository.approveTaskParticipant(task, memberId);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(paid ? strings.payoutComplete : strings.payoutWaiting)),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.verified_rounded),
+                            ),
+                          ],
+                        ),
+                ),
             ],
           ],
         ),

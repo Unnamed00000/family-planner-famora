@@ -270,8 +270,11 @@ class TaskItem {
     required this.recurrence,
     required this.status,
     required this.points,
+    this.participantLimit = 1,
+    this.participantIds = const [],
     this.createdBy,
-    this.completedBy,
+    this.completedBy = const [],
+    this.approvedBy = const [],
     this.completedAt,
     this.createdAt,
     this.updatedAt,
@@ -286,8 +289,11 @@ class TaskItem {
   final TaskRecurrence recurrence;
   final TaskStatus status;
   final int points;
+  final int participantLimit;
+  final List<String> participantIds;
   final String? createdBy;
-  final String? completedBy;
+  final List<String> completedBy;
+  final List<String> approvedBy;
   final DateTime? completedAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -296,6 +302,39 @@ class TaskItem {
 
   bool get isOpenTask => assignedToId.isEmpty;
 
+  bool get canBeClaimed =>
+      isOpenTask &&
+      status != TaskStatus.done &&
+      completedBy.isEmpty &&
+      approvedBy.isEmpty &&
+      participantIds.length < participantLimit;
+
+  bool isParticipant(String memberId) => participantIds.contains(memberId);
+
+  bool hasCompleted(String memberId) => completedBy.contains(memberId);
+
+  bool hasApproved(String memberId) => approvedBy.contains(memberId);
+
+  bool isCompletedFor(String memberId) =>
+      isDone && (approvedBy.isEmpty ? isParticipant(memberId) : hasApproved(memberId));
+
+  int pointsForApprovedMember(String memberId) {
+    if (!isCompletedFor(memberId)) {
+      return 0;
+    }
+    if (approvedBy.isEmpty) {
+      return points;
+    }
+    final index = approvedBy.indexOf(memberId);
+    if (index < 0) {
+      return 0;
+    }
+    return points ~/ approvedBy.length + (index < points % approvedBy.length ? 1 : 0);
+  }
+
+  bool get isReadyForPayout =>
+      participantIds.isNotEmpty && participantIds.every(approvedBy.contains);
+
   bool get isToday {
     final now = DateTime.now();
     return dueAt.year == now.year && dueAt.month == now.month && dueAt.day == now.day;
@@ -303,18 +342,24 @@ class TaskItem {
 
   factory TaskItem.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
+    final assignedToId = data['assignedToId'] as String? ?? '';
+    final participantIds = _stringList(data['participantIds']);
+    final completedBy = _stringList(data['completedBy']);
     return TaskItem(
       id: doc.id,
       title: data['title'] as String? ?? 'Задача',
       description: data['description'] as String? ?? '',
-      assignedToId: data['assignedToId'] as String? ?? '',
+      assignedToId: assignedToId,
       priority: TaskPriorityX.fromWire(data['priority'] as String?),
       dueAt: _dateFromJson(data['dueAt']) ?? DateTime.now(),
       recurrence: TaskRecurrenceX.fromWire(data['recurrence'] as String?),
       status: TaskStatusX.fromWire(data['status'] as String?),
       points: (data['points'] as num?)?.toInt() ?? 5,
+      participantLimit: ((data['participantLimit'] as num?)?.toInt() ?? 1).clamp(1, 99).toInt(),
+      participantIds: participantIds.isNotEmpty || assignedToId.isEmpty ? participantIds : [assignedToId],
       createdBy: data['createdBy'] as String?,
-      completedBy: data['completedBy'] as String?,
+      completedBy: completedBy,
+      approvedBy: _stringList(data['approvedBy']),
       completedAt: _dateFromJson(data['completedAt']),
       createdAt: _dateFromJson(data['createdAt']),
       updatedAt: _dateFromJson(data['updatedAt']),
@@ -331,12 +376,25 @@ class TaskItem {
       'recurrence': recurrence.name,
       'status': status.name,
       'points': points,
+      'participantLimit': participantLimit,
+      'participantIds': participantIds,
       'createdBy': createdBy,
       'completedBy': completedBy,
+      'approvedBy': approvedBy,
       'completedAt': completedAt == null ? null : Timestamp.fromDate(completedAt!),
       'createdAt': createdAt == null ? FieldValue.serverTimestamp() : Timestamp.fromDate(createdAt!),
       'updatedAt': FieldValue.serverTimestamp(),
     };
+  }
+
+  static List<String> _stringList(dynamic value) {
+    if (value is List) {
+      return value.whereType<String>().where((item) => item.isNotEmpty).toList();
+    }
+    if (value is String && value.isNotEmpty) {
+      return [value];
+    }
+    return const [];
   }
 }
 

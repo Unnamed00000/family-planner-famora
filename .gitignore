@@ -8,6 +8,8 @@ build/
 *.iml
 *.log
 coverage/
+*.backup-*
+tooling/
 android/.gradle/
 android/local.properties
 ios/Pods/

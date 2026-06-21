@@ -119,7 +119,7 @@ class NewspaperScreen extends StatelessWidget {
     FamilyMember? best;
     var count = 0;
     for (final member in members) {
-      final done = tasks.where((task) => task.assignedToId == member.id && task.isDone).length;
+      final done = tasks.where((task) => task.isCompletedFor(member.id)).length;
       if (done > count) {
         count = done;
         best = member;

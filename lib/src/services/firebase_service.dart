@@ -140,18 +140,9 @@ class FamilyRepository {
   }
 
   Stream<List<TaskItem>> watchTasksForMember(String memberId) {
-    return _tasks
-        .where('assignedToId', isEqualTo: memberId)
-        .snapshots()
-        .map((snapshot) {
-          final tasks = snapshot.docs.map(TaskItem.fromDoc).toList();
-          tasks.sort((a, b) {
-            final aCreated = a.createdAt ?? a.dueAt;
-            final bCreated = b.createdAt ?? b.dueAt;
-            return bCreated.compareTo(aCreated);
-          });
-          return tasks;
-        });
+    return watchTasks().map(
+      (tasks) => tasks.where((task) => task.isParticipant(memberId)).toList(),
+    );
   }
 
   Stream<List<Announcement>> watchAnnouncements() {
@@ -322,66 +313,33 @@ class FamilyRepository {
 
   Future<void> saveTask(TaskItem task) async {
     final id = task.id.isEmpty ? _tasks.doc().id : task.id;
-    final now = DateTime.now();
-    final uid = _auth.currentUser?.uid;
     final taskRef = _tasks.doc(id);
-    final memberRef = _members.doc(task.assignedToId);
-    final result = await _firestore.runTransaction<_TaskUpdateResult>((transaction) async {
-      final snapshot = await transaction.get(taskRef);
-      final currentData = snapshot.data();
-      final currentStatus = TaskStatusX.fromWire(currentData?['status'] as String?);
-      final taskData = task.toJson();
-
-      // Completed tasks are final: keep their completion metadata and avoid a
-      // second reward when an administrator later edits another task field.
-      if (currentStatus == TaskStatus.done) {
-        taskData['status'] = TaskStatus.done.name;
-        taskData['completedAt'] = currentData?['completedAt'];
-        taskData['completedBy'] = currentData?['completedBy'];
-        transaction.set(taskRef, taskData, SetOptions(merge: true));
-        return const _TaskUpdateResult();
-      }
-
-      final completed = task.status == TaskStatus.done;
-      if (completed) {
-        taskData['completedAt'] = Timestamp.fromDate(now);
-        taskData['completedBy'] = uid;
-      }
-      transaction.set(taskRef, taskData, SetOptions(merge: true));
-
-      if (completed) {
-        transaction.update(memberRef, {
-          'completedTasks': FieldValue.increment(1),
-          'points': FieldValue.increment(task.points),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        return _TaskUpdateResult(
-          createRecurringTask: task.recurrence != TaskRecurrence.once,
-          clearReviewNotifications: true,
-        );
-      }
-      return const _TaskUpdateResult();
-    });
-
-    if (result.clearReviewNotifications) {
-      await acceptNotificationsForEntity(id);
-    }
-    if (result.createRecurringTask) {
-      await _tasks.add(
-        TaskItem(
-          id: '',
-          title: task.title,
-          description: task.description,
-          assignedToId: task.assignedToId,
-          priority: task.priority,
-          dueAt: _nextDueAt(task.dueAt, task.recurrence),
-          recurrence: task.recurrence,
-          status: TaskStatus.pending,
-          points: task.points,
-          createdBy: task.createdBy,
-        ).toJson(),
-      );
-    }
+    final existing = task.id.isEmpty ? null : await taskRef.get();
+    final current = existing?.exists == true ? TaskItem.fromDoc(existing!) : null;
+    final participantIds = task.participantIds.isNotEmpty
+        ? task.participantIds
+        : task.assignedToId.isNotEmpty
+            ? [task.assignedToId]
+            : current?.participantIds ?? const <String>[];
+    final savedTask = TaskItem(
+      id: id,
+      title: task.title,
+      description: task.description,
+      assignedToId: task.assignedToId,
+      priority: task.priority,
+      dueAt: task.dueAt,
+      recurrence: task.recurrence,
+      status: current?.isDone == true ? TaskStatus.done : task.status,
+      points: task.points,
+      participantLimit: task.assignedToId.isEmpty ? task.participantLimit : 1,
+      participantIds: participantIds,
+      createdBy: task.createdBy,
+      completedBy: current?.completedBy ?? task.completedBy,
+      approvedBy: current?.approvedBy ?? task.approvedBy,
+      completedAt: current?.completedAt ?? task.completedAt,
+      createdAt: task.createdAt,
+    );
+    await taskRef.set(savedTask.toJson(), SetOptions(merge: true));
     await writeHistory('save', 'task', task.title);
   }
 
@@ -391,21 +349,22 @@ class FamilyRepository {
   }
 
   Future<bool> claimOpenTask(TaskItem task, FamilyMember member) async {
-    if (!task.isOpenTask || task.status != TaskStatus.pending) {
+    if (!task.canBeClaimed || task.isParticipant(member.id)) {
       return false;
     }
 
     final taskRef = _tasks.doc(task.id);
     final claimed = await _firestore.runTransaction<bool>((transaction) async {
       final snapshot = await transaction.get(taskRef);
-      final data = snapshot.data();
-      if (data == null ||
-          (data['assignedToId'] as String? ?? '').isNotEmpty ||
-          TaskStatusX.fromWire(data['status'] as String?) != TaskStatus.pending) {
+      if (!snapshot.exists) {
+        return false;
+      }
+      final current = TaskItem.fromDoc(snapshot);
+      if (!current.canBeClaimed || current.isParticipant(member.id)) {
         return false;
       }
       transaction.update(taskRef, {
-        'assignedToId': member.id,
+        'participantIds': [...current.participantIds, member.id],
         'status': TaskStatus.inProgress.name,
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -417,6 +376,108 @@ class FamilyRepository {
       await writeHistory('claim', 'task', '${member.name}: ${task.title}');
     }
     return claimed;
+  }
+
+  Future<void> startTask(TaskItem task, String memberId) async {
+    if (!task.isParticipant(memberId) || task.status == TaskStatus.done) {
+      return;
+    }
+    await _tasks.doc(task.id).update({
+      'status': TaskStatus.inProgress.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await writeHistory('start', 'task', task.title);
+  }
+
+  Future<bool> completeTask(TaskItem task, FamilyMember member) async {
+    final taskRef = _tasks.doc(task.id);
+    final completed = await _firestore.runTransaction<bool>((transaction) async {
+      final snapshot = await transaction.get(taskRef);
+      if (!snapshot.exists) {
+        return false;
+      }
+      final current = TaskItem.fromDoc(snapshot);
+      if (!current.isParticipant(member.id) || current.hasCompleted(member.id) || current.isDone) {
+        return false;
+      }
+      transaction.update(taskRef, {
+        'completedBy': [...current.completedBy, member.id],
+        'status': TaskStatus.awaitingApproval.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return true;
+    });
+    if (completed) {
+      await _createTaskReviewNotificationsForMember(task, member);
+      await writeHistory('complete', 'task', '${member.name}: ${task.title}');
+    }
+    return completed;
+  }
+
+  Future<bool> approveTaskParticipant(TaskItem task, String memberId) async {
+    final taskRef = _tasks.doc(task.id);
+    final paid = await _firestore.runTransaction<bool>((transaction) async {
+      final snapshot = await transaction.get(taskRef);
+      if (!snapshot.exists) {
+        return false;
+      }
+      final current = TaskItem.fromDoc(snapshot);
+      if (!current.hasCompleted(memberId) || current.hasApproved(memberId) || current.isDone) {
+        return false;
+      }
+      final approvedBy = [...current.approvedBy, memberId];
+      final isReadyForPayout = current.participantIds.isNotEmpty && current.participantIds.every(approvedBy.contains);
+      transaction.update(taskRef, {
+        'approvedBy': approvedBy,
+        'status': isReadyForPayout ? TaskStatus.done.name : TaskStatus.awaitingApproval.name,
+        if (isReadyForPayout) 'completedAt': Timestamp.fromDate(DateTime.now()),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!isReadyForPayout) {
+        return false;
+      }
+      final basePoints = current.points ~/ approvedBy.length;
+      final remainder = current.points % approvedBy.length;
+      for (var index = 0; index < approvedBy.length; index++) {
+        transaction.update(_members.doc(approvedBy[index]), {
+          'completedTasks': FieldValue.increment(1),
+          'points': FieldValue.increment(basePoints + (index < remainder ? 1 : 0)),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      return true;
+    });
+
+    if (paid) {
+      await acceptNotificationsForEntity(task.id);
+      if (task.recurrence != TaskRecurrence.once) {
+        await _createRecurringTask(task);
+      }
+      await writeHistory('approve_and_pay', 'task', task.title);
+    } else {
+      await writeHistory('approve', 'task', task.title);
+    }
+    return paid;
+  }
+
+  Future<void> returnTaskForRedo(TaskItem task, String memberId) async {
+    final taskRef = _tasks.doc(task.id);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(taskRef);
+      if (!snapshot.exists) {
+        return;
+      }
+      final current = TaskItem.fromDoc(snapshot);
+      final completedBy = current.completedBy.where((id) => id != memberId).toList();
+      final approvedBy = current.approvedBy.where((id) => id != memberId).toList();
+      transaction.update(taskRef, {
+        'completedBy': completedBy,
+        'approvedBy': approvedBy,
+        'status': completedBy.isEmpty ? TaskStatus.inProgress.name : TaskStatus.awaitingApproval.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+    await writeHistory('redo', 'task', task.title);
   }
 
   Future<void> saveActivity(ActivityItem activity) async {
@@ -556,6 +617,19 @@ class FamilyRepository {
     }
   }
 
+  Future<void> _createTaskReviewNotificationsForMember(TaskItem task, FamilyMember member) async {
+    final admins = await _members.where('role', isEqualTo: 'admin').get();
+    for (final admin in admins.docs) {
+      await createNotification(
+        title: 'Task completed',
+        body: '${member.name} completed "${task.title}" and is waiting for your approval.',
+        assignedToId: admin.id,
+        type: 'task_review',
+        entityId: task.id,
+      );
+    }
+  }
+
   Future<void> _createTaskClaimNotifications(TaskItem task, FamilyMember member) async {
     final admins = await _members.where('role', isEqualTo: 'admin').get();
     for (final admin in admins.docs) {
@@ -567,6 +641,25 @@ class FamilyRepository {
         entityId: task.id,
       );
     }
+  }
+
+  Future<void> _createRecurringTask(TaskItem task) async {
+    await _tasks.add(
+      TaskItem(
+        id: '',
+        title: task.title,
+        description: task.description,
+        assignedToId: task.assignedToId,
+        priority: task.priority,
+        dueAt: _nextDueAt(task.dueAt, task.recurrence),
+        recurrence: task.recurrence,
+        status: TaskStatus.pending,
+        points: task.points,
+        participantLimit: task.participantLimit,
+        participantIds: task.assignedToId.isEmpty ? const [] : task.participantIds,
+        createdBy: task.createdBy,
+      ).toJson(),
+    );
   }
 
   DateTime _nextDueAt(DateTime current, TaskRecurrence recurrence) {

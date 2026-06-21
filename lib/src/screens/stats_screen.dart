@@ -171,8 +171,8 @@ class _MemberStats {
     required this.member,
     required List<TaskItem> tasks,
     required List<ActivityItem> activities,
-  })  : doneTasks = tasks.where((task) => task.assignedToId == member.id && task.isDone).length,
-        missedTasks = tasks.where((task) => task.assignedToId == member.id && task.status == TaskStatus.overdue).length,
+  })  : doneTasks = tasks.where((task) => task.isCompletedFor(member.id)).length,
+        missedTasks = tasks.where((task) => task.isParticipant(member.id) && task.status == TaskStatus.overdue).length,
         points = member.points,
         todayActivityMinutes = activities
             .where((activity) => activity.assignedToId == member.id && _isToday(activity))
@@ -278,8 +278,7 @@ class _ChartCard extends StatelessWidget {
           tasks
               .where((task) {
                 final day = now.subtract(Duration(days: i));
-                return task.assignedToId == member.id &&
-                    task.isDone &&
+                return task.isCompletedFor(member.id) &&
                     task.dueAt.year == day.year &&
                     task.dueAt.month == day.month &&
                     task.dueAt.day == day.day;

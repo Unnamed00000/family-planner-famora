@@ -46,4 +46,26 @@ void main() {
 
     expect(task.isOpenTask, isTrue);
   });
+
+  test('splits task points between approved participants', () {
+    final task = TaskItem(
+      id: 'task-2',
+      title: 'Shared task',
+      description: '',
+      assignedToId: '',
+      priority: TaskPriority.normal,
+      dueAt: DateTime(2026, 6, 21),
+      recurrence: TaskRecurrence.once,
+      status: TaskStatus.done,
+      points: 50,
+      participantLimit: 2,
+      participantIds: const ['samira', 'maryam'],
+      completedBy: const ['samira', 'maryam'],
+      approvedBy: const ['samira', 'maryam'],
+    );
+
+    expect(task.isReadyForPayout, isTrue);
+    expect(task.pointsForApprovedMember('samira'), 25);
+    expect(task.pointsForApprovedMember('maryam'), 25);
+  });
 }

@@ -107,10 +107,14 @@ class FamilyBoardScreen extends StatelessWidget {
                             for (final task in today)
                               Card(
                                 child: ListTile(
-                                  leading: members[task.assignedToId] == null
+                                  leading: task.participantIds.isEmpty || members[task.participantIds.first] == null
                                       ? CircleAvatar(child: Icon(task.status.icon))
-                                      : MemberAvatar(member: members[task.assignedToId]!),
-                                  title: Text(members[task.assignedToId]?.name ?? strings.noAssignee),
+                                      : MemberAvatar(member: members[task.participantIds.first]!),
+                                  title: Text(
+                                    task.participantIds.isEmpty
+                                        ? strings.noAssignee
+                                        : task.participantIds.map((id) => members[id]?.name ?? id).join(', '),
+                                  ),
                                   subtitle: Text(
                                     task.status == TaskStatus.done && task.completedAt != null
                                         ? '${task.title} - ${timeFormat.format(task.completedAt!)}'

@@ -55,6 +55,18 @@ class AppStrings {
   String get admin => pick(ru: 'Админ', en: 'Admin', da: 'Admin');
   String get signIn => pick(ru: 'Войти', en: 'Sign in', da: 'Log ind');
   String get email => pick(ru: 'Email', en: 'Email', da: 'Email');
+  String get participantLimit => pick(ru: '\u041b\u0438\u043c\u0438\u0442 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432', en: 'Participant limit', da: 'Deltagergr\u00e6nse');
+  String get participants => pick(ru: '\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0438', en: 'Participants', da: 'Deltagere');
+  String participantProgress(int current, int limit) => pick(
+        ru: '$current \u0438\u0437 $limit \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432',
+        en: '$current of $limit participants',
+        da: '$current af $limit deltagere',
+      );
+  String get completeTask => pick(ru: '\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c', en: 'Finish and send', da: 'Afslut og send');
+  String get participantApproved => pick(ru: '\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043d', en: 'Approved', da: 'Godkendt');
+  String get approveParticipant => pick(ru: '\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430', en: 'Approve participant', da: 'Godkend deltager');
+  String get payoutWaiting => pick(ru: '\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u043e. \u041e\u0436\u0438\u0434\u0430\u0435\u043c \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u043e\u0441\u0442\u0430\u043b\u044c\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432.', en: 'Approved. Waiting for the other participants to finish.', da: 'Godkendt. Venter p\u00e5 de andre deltagere.');
+  String get payoutComplete => pick(ru: '\u0412\u0441\u0435 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0438 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u044b. \u0411\u0430\u043b\u043b\u044b \u043d\u0430\u0447\u0438\u0441\u043b\u0435\u043d\u044b.', en: 'All participants are approved. Points have been paid.', da: 'Alle deltagere er godkendt. Point er udbetalt.');
   String get openTaskHint => pick(
         ru: '\u041d\u0438\u043a\u043e\u0433\u043e \u043d\u0435 \u0432\u044b\u0431\u0438\u0440\u0430\u0439\u0442\u0435, \u0447\u0442\u043e\u0431\u044b \u0441\u0434\u0435\u043b\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443 \u0441\u0432\u043e\u0431\u043e\u0434\u043d\u043e\u0439: \u043f\u0435\u0440\u0432\u044b\u0439 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a \u0441\u043c\u043e\u0436\u0435\u0442 \u0432\u0437\u044f\u0442\u044c \u0435\u0451.',
         en: 'Leave everyone unchecked to make an open task. The first member can claim it.',
