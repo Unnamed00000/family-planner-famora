@@ -1,4 +1,5 @@
 import 'package:family_planner/src/l10n/app_strings.dart';
+import 'package:family_planner/src/models/app_models.dart';
 import 'package:family_planner/src/utils/photo_url.dart';
 import 'package:family_planner/src/utils/week_number.dart';
 import 'package:flutter/widgets.dart';
@@ -28,5 +29,21 @@ void main() {
     expect(isoWeekNumber(DateTime(2026, 6, 15)), 25);
     expect(isoWeekNumber(DateTime(2026, 6, 19)), 25);
     expect(isoWeekNumber(DateTime(2026, 6, 22)), 26);
+  });
+
+  test('recognizes an unassigned task as open', () {
+    final task = TaskItem(
+      id: 'task-1',
+      title: 'Open task',
+      description: '',
+      assignedToId: '',
+      priority: TaskPriority.normal,
+      dueAt: DateTime(2026, 6, 21),
+      recurrence: TaskRecurrence.once,
+      status: TaskStatus.pending,
+      points: 5,
+    );
+
+    expect(task.isOpenTask, isTrue);
   });
 }

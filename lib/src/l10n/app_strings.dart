@@ -55,6 +55,22 @@ class AppStrings {
   String get admin => pick(ru: 'Админ', en: 'Admin', da: 'Admin');
   String get signIn => pick(ru: 'Войти', en: 'Sign in', da: 'Log ind');
   String get email => pick(ru: 'Email', en: 'Email', da: 'Email');
+  String get openTaskHint => pick(
+        ru: '\u041d\u0438\u043a\u043e\u0433\u043e \u043d\u0435 \u0432\u044b\u0431\u0438\u0440\u0430\u0439\u0442\u0435, \u0447\u0442\u043e\u0431\u044b \u0441\u0434\u0435\u043b\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443 \u0441\u0432\u043e\u0431\u043e\u0434\u043d\u043e\u0439: \u043f\u0435\u0440\u0432\u044b\u0439 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a \u0441\u043c\u043e\u0436\u0435\u0442 \u0432\u0437\u044f\u0442\u044c \u0435\u0451.',
+        en: 'Leave everyone unchecked to make an open task. The first member can claim it.',
+        da: 'Lad alle v\u00e6re fravalgt for at oprette en \u00e5ben opgave. Det f\u00f8rste medlem kan tage den.',
+      );
+  String get claimTask => pick(ru: '\u0412\u0437\u044f\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443', en: 'Claim task', da: 'Tag opgaven');
+  String get taskClaimed => pick(
+        ru: '\u0417\u0430\u0434\u0430\u0447\u0430 \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0435\u043d\u0430 \u0437\u0430 \u0432\u0430\u043c\u0438. \u041c\u043e\u0436\u043d\u043e \u043f\u0440\u0438\u0441\u0442\u0443\u043f\u0430\u0442\u044c.',
+        en: 'The task is yours. You can start now.',
+        da: 'Opgaven er din. Du kan starte nu.',
+      );
+  String get taskAlreadyClaimed => pick(
+        ru: '\u042d\u0442\u0443 \u0437\u0430\u0434\u0430\u0447\u0443 \u0443\u0436\u0435 \u0432\u0437\u044f\u043b \u0434\u0440\u0443\u0433\u043e\u0439 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a.',
+        en: 'Another member has already claimed this task.',
+        da: 'Et andet medlem har allerede taget opgaven.',
+      );
   String get password => pick(ru: 'Пароль', en: 'Password', da: 'Adgangskode');
   String get familyLogin => pick(ru: 'Семейный логин', en: 'Family login', da: 'Familielogin');
   String get createAccount => pick(ru: 'Создать аккаунт', en: 'Create account', da: 'Opret konto');

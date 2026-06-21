@@ -185,7 +185,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final title = TextEditingController();
     final description = TextEditingController();
     final points = TextEditingController(text: '5');
-    final selectedIds = <String>{members.first.id};
+    final selectedIds = <String>{};
     var dueAt = DateTime(day.year, day.month, day.day, DateTime.now().hour + 1, 0);
     var priority = TaskPriority.normal;
     var recurrence = TaskRecurrence.once;
@@ -214,7 +214,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   onChanged: (memberId, selected) => setDialogState(() {
                     if (selected) {
                       selectedIds.add(memberId);
-                    } else if (selectedIds.length > 1) {
+                    } else {
                       selectedIds.remove(memberId);
                     }
                   }),
@@ -263,7 +263,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (saved != true || title.text.trim().isEmpty) {
       return;
     }
-    for (final memberId in selectedIds) {
+    for (final memberId in selectedIds.isEmpty ? <String>[''] : selectedIds) {
       await widget.familyRepository.saveTask(
         TaskItem(
           id: '',
@@ -614,6 +614,14 @@ class _CalendarAssigneeSelector extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (selectedIds.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                strings.openTaskHint,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           for (final member in members)
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
@@ -623,12 +631,7 @@ class _CalendarAssigneeSelector extends StatelessWidget {
               title: Text(member.name),
               value: selectedIds.contains(member.id),
               activeColor: familyMemberColor(member),
-              onChanged: (value) {
-                if (selectedIds.length == 1 && selectedIds.contains(member.id) && value == false) {
-                  return;
-                }
-                onChanged(member.id, value ?? false);
-              },
+              onChanged: (value) => onChanged(member.id, value ?? false),
             ),
         ],
       ),

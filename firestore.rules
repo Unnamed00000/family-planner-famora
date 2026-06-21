@@ -65,6 +65,12 @@ service cloud.firestore {
       allow update: if signedIn()
         && isMemberSelf(resource.data.assignedToId)
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'completedAt', 'completedBy', 'updatedAt']);
+      allow update: if signedIn()
+        && resource.data.assignedToId == ''
+        && resource.data.status == 'pending'
+        && isMemberSelf(request.resource.data.assignedToId)
+        && request.resource.data.status == 'inProgress'
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['assignedToId', 'status', 'updatedAt']);
     }
 
     match /announcements/{announcementId} {

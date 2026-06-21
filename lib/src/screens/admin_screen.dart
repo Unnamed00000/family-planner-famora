@@ -837,7 +837,9 @@ class _TasksAdmin extends StatelessWidget {
     final title = TextEditingController(text: task?.title ?? '');
     final description = TextEditingController(text: task?.description ?? '');
     final points = TextEditingController(text: (task?.points ?? 5).toString());
-    final selectedAssigneeIds = <String>{task?.assignedToId ?? members.first.id};
+    final selectedAssigneeIds = <String>{
+      if ((task?.assignedToId ?? '').isNotEmpty) task!.assignedToId,
+    };
     var priority = task?.priority ?? TaskPriority.normal;
     var recurrence = task?.recurrence ?? TaskRecurrence.once;
     var status = task?.status ?? TaskStatus.pending;
@@ -864,7 +866,7 @@ class _TasksAdmin extends StatelessWidget {
                     setState(() {
                       if (selected) {
                         selectedAssigneeIds.add(memberId);
-                      } else if (selectedAssigneeIds.length > 1) {
+                      } else {
                         selectedAssigneeIds.remove(memberId);
                       }
                     });
@@ -933,7 +935,7 @@ class _TasksAdmin extends StatelessWidget {
     if (saved != true) {
       return;
     }
-    final assigneeIds = selectedAssigneeIds.toList();
+    final assigneeIds = selectedAssigneeIds.isEmpty ? <String>[''] : selectedAssigneeIds.toList();
     for (var index = 0; index < assigneeIds.length; index++) {
       await repository.saveTask(
         TaskItem(
@@ -976,6 +978,14 @@ class _AssigneeSelector extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (selectedIds.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                strings.openTaskHint,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           for (final member in members)
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
@@ -985,12 +995,7 @@ class _AssigneeSelector extends StatelessWidget {
               title: Text(member.name),
               value: selectedIds.contains(member.id),
               activeColor: familyMemberColor(member),
-              onChanged: (value) {
-                if (selectedIds.length == 1 && selectedIds.contains(member.id) && value == false) {
-                  return;
-                }
-                onChanged(member.id, value ?? false);
-              },
+              onChanged: (value) => onChanged(member.id, value ?? false),
             ),
         ],
       ),

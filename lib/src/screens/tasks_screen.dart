@@ -125,6 +125,7 @@ class _TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isAdmin = currentMember?.role.isAdmin == true;
     final isAssignee = currentMember?.id == task.assignedToId;
+    final canClaimOpenTask = !isAdmin && currentMember != null && task.isOpenTask && task.status == TaskStatus.pending;
     final canWorkOnTask = (isAdmin || isAssignee) &&
         task.status != TaskStatus.done &&
         task.status != TaskStatus.awaitingApproval;
@@ -167,6 +168,22 @@ class _TaskCard extends StatelessWidget {
                 Chip(label: Text(strings.taskRecurrence(task.recurrence)), avatar: const Icon(Icons.repeat_rounded)),
               ],
             ),
+            if (canClaimOpenTask) ...[
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () async {
+                  final claimed = await familyRepository.claimOpenTask(task, currentMember!);
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(claimed ? strings.taskClaimed : strings.taskAlreadyClaimed)),
+                  );
+                },
+                icon: const Icon(Icons.front_hand_rounded),
+                label: Text(strings.claimTask),
+              ),
+            ],
             if (canWorkOnTask) ...[
               const SizedBox(height: 8),
               Wrap(

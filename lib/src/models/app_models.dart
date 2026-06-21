@@ -294,6 +294,8 @@ class TaskItem {
 
   bool get isDone => status == TaskStatus.done;
 
+  bool get isOpenTask => assignedToId.isEmpty;
+
   bool get isToday {
     final now = DateTime.now();
     return dueAt.year == now.year && dueAt.month == now.month && dueAt.day == now.day;

@@ -390,6 +390,35 @@ class FamilyRepository {
     await writeHistory('delete', 'task', taskId);
   }
 
+  Future<bool> claimOpenTask(TaskItem task, FamilyMember member) async {
+    if (!task.isOpenTask || task.status != TaskStatus.pending) {
+      return false;
+    }
+
+    final taskRef = _tasks.doc(task.id);
+    final claimed = await _firestore.runTransaction<bool>((transaction) async {
+      final snapshot = await transaction.get(taskRef);
+      final data = snapshot.data();
+      if (data == null ||
+          (data['assignedToId'] as String? ?? '').isNotEmpty ||
+          TaskStatusX.fromWire(data['status'] as String?) != TaskStatus.pending) {
+        return false;
+      }
+      transaction.update(taskRef, {
+        'assignedToId': member.id,
+        'status': TaskStatus.inProgress.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return true;
+    });
+
+    if (claimed) {
+      await _createTaskClaimNotifications(task, member);
+      await writeHistory('claim', 'task', '${member.name}: ${task.title}');
+    }
+    return claimed;
+  }
+
   Future<void> saveActivity(ActivityItem activity) async {
     final id = activity.id.isEmpty ? _activities.doc().id : activity.id;
     final doc = _activities.doc(id);
@@ -522,6 +551,19 @@ class FamilyRepository {
         body: '${task.title} — ребёнок отправил задачу на проверку. Подтверди и оплати или верни на переделку.',
         assignedToId: admin.id,
         type: 'task_review',
+        entityId: task.id,
+      );
+    }
+  }
+
+  Future<void> _createTaskClaimNotifications(TaskItem task, FamilyMember member) async {
+    final admins = await _members.where('role', isEqualTo: 'admin').get();
+    for (final admin in admins.docs) {
+      await createNotification(
+        title: 'Task claimed',
+        body: '${member.name} claimed "${task.title}" and started working on it.',
+        assignedToId: admin.id,
+        type: 'task_claim',
         entityId: task.id,
       );
     }
