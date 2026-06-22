@@ -127,7 +127,7 @@ class _TaskCard extends StatelessWidget {
     final currentMemberId = currentMember?.id;
     final isParticipant = currentMemberId != null && task.isParticipant(currentMemberId);
     final hasCompleted = currentMemberId != null && task.hasCompleted(currentMemberId);
-    final canClaimOpenTask = !isAdmin && currentMember != null && task.canBeClaimed && !isParticipant;
+    final canClaimOpenTask = currentMember != null && task.canBeClaimed && !isParticipant;
     final canWorkOnTask = isParticipant && !hasCompleted && !task.isDone;
     final canReviewTask = isAdmin && task.completedBy.isNotEmpty && !task.isDone;
     final participantNames = task.participantIds
