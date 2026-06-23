@@ -275,6 +275,9 @@ class TaskItem {
     this.createdBy,
     this.completedBy = const [],
     this.approvedBy = const [],
+    this.droppedBy = const [],
+    this.approvedByAdminId,
+    this.approvedAt,
     this.completedAt,
     this.createdAt,
     this.updatedAt,
@@ -294,6 +297,9 @@ class TaskItem {
   final String? createdBy;
   final List<String> completedBy;
   final List<String> approvedBy;
+  final List<String> droppedBy;
+  final String? approvedByAdminId;
+  final DateTime? approvedAt;
   final DateTime? completedAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -360,6 +366,9 @@ class TaskItem {
       createdBy: data['createdBy'] as String?,
       completedBy: completedBy,
       approvedBy: _stringList(data['approvedBy']),
+      droppedBy: _stringList(data['droppedBy']),
+      approvedByAdminId: data['approvedByAdminId'] as String?,
+      approvedAt: _dateFromJson(data['approvedAt']),
       completedAt: _dateFromJson(data['completedAt']),
       createdAt: _dateFromJson(data['createdAt']),
       updatedAt: _dateFromJson(data['updatedAt']),
@@ -381,6 +390,9 @@ class TaskItem {
       'createdBy': createdBy,
       'completedBy': completedBy,
       'approvedBy': approvedBy,
+      'droppedBy': droppedBy,
+      'approvedByAdminId': approvedByAdminId,
+      'approvedAt': approvedAt == null ? null : Timestamp.fromDate(approvedAt!),
       'completedAt': completedAt == null ? null : Timestamp.fromDate(completedAt!),
       'createdAt': createdAt == null ? FieldValue.serverTimestamp() : Timestamp.fromDate(createdAt!),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -600,6 +612,7 @@ class HistoryEntry {
     required this.createdAt,
     this.actorId,
     this.details,
+    this.data,
   });
 
   final String id;
@@ -608,15 +621,18 @@ class HistoryEntry {
   final DateTime createdAt;
   final String? actorId;
   final String? details;
+  final Map<String, dynamic>? data;
 
   factory HistoryEntry.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
+    final historyData = data['data'];
     return HistoryEntry(
       id: doc.id,
       action: data['action'] as String? ?? '',
       entity: data['entity'] as String? ?? '',
       actorId: data['actorId'] as String?,
       details: data['details'] as String?,
+      data: historyData is Map ? Map<String, dynamic>.from(historyData) : null,
       createdAt: _dateFromJson(data['createdAt']) ?? DateTime.now(),
     );
   }

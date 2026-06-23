@@ -68,4 +68,29 @@ void main() {
     expect(task.pointsForApprovedMember('samira'), 25);
     expect(task.pointsForApprovedMember('maryam'), 25);
   });
+
+  test('does not reward a participant who withdrew from a shared task', () {
+    final task = TaskItem(
+      id: 'task-3',
+      title: 'Shared task with one withdrawal',
+      description: '',
+      assignedToId: '',
+      priority: TaskPriority.normal,
+      dueAt: DateTime(2026, 6, 21),
+      recurrence: TaskRecurrence.once,
+      status: TaskStatus.done,
+      points: 50,
+      participantLimit: 3,
+      participantIds: const ['samira', 'maryam', 'mohammed'],
+      completedBy: const ['samira', 'maryam'],
+      approvedBy: const ['samira', 'maryam'],
+      droppedBy: const ['mohammed'],
+      approvedByAdminId: 'adam',
+    );
+
+    expect(task.pointsForApprovedMember('samira'), 25);
+    expect(task.pointsForApprovedMember('maryam'), 25);
+    expect(task.pointsForApprovedMember('mohammed'), 0);
+    expect(task.approvedByAdminId, 'adam');
+  });
 }

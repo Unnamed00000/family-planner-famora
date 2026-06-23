@@ -44,13 +44,19 @@ class FamilyBoardScreen extends StatelessWidget {
                     stream: familyRepository.watchTasks(),
                     builder: (context, taskSnapshot) {
                       final today = (taskSnapshot.data ?? []).where((task) => task.isToday).toList();
-                      if (today.isEmpty && announcements.isEmpty && notifications.isEmpty) {
-                        return EmptyState(
-                          icon: Icons.dashboard_rounded,
-                          title: strings.noTasksToday,
-                        );
-                      }
-                      return ListView(
+                      return StreamBuilder<List<HistoryEntry>>(
+                        stream: familyRepository.watchHistory(),
+                        builder: (context, historySnapshot) {
+                          final taskHistory = (historySnapshot.data ?? [])
+                              .where((entry) => entry.action == 'task_finalized')
+                              .toList();
+                          if (today.isEmpty && announcements.isEmpty && notifications.isEmpty && taskHistory.isEmpty) {
+                            return EmptyState(
+                              icon: Icons.dashboard_rounded,
+                              title: strings.noTasksToday,
+                            );
+                          }
+                          return ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
                           _SectionTitle(title: strings.notifications, icon: Icons.notifications_active_rounded),
@@ -123,7 +129,16 @@ class FamilyBoardScreen extends StatelessWidget {
                                   trailing: TaskStatusChip(status: task.status),
                                 ),
                               ),
+                          const SizedBox(height: 16),
+                          _SectionTitle(title: strings.history, icon: Icons.history_rounded),
+                          if (taskHistory.isEmpty)
+                            Card(child: ListTile(title: Text(strings.historyEmpty)))
+                          else
+                            for (final entry in taskHistory.take(30))
+                              _TaskHistoryCard(entry: entry, members: members),
                         ],
+                      );
+                        },
                       );
                     },
                   );
@@ -134,6 +149,72 @@ class FamilyBoardScreen extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class _TaskHistoryCard extends StatelessWidget {
+  const _TaskHistoryCard({
+    required this.entry,
+    required this.members,
+  });
+
+  final HistoryEntry entry;
+  final Map<String, FamilyMember> members;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final data = entry.data;
+    final approvedIds = _stringIds(data?['approvedMemberIds']);
+    final droppedIds = _stringIds(data?['droppedMemberIds']);
+    final rewardData = data?['rewards'];
+    final rewards = rewardData is Map
+        ? rewardData.map<String, int>((key, value) => MapEntry(key.toString(), (value as num?)?.toInt() ?? 0))
+        : <String, int>{};
+    final adminId = data?['approvedByAdminId'] as String?;
+    final title = data?['taskTitle'] as String? ?? entry.details ?? strings.tasks;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.task_alt_rounded),
+                const SizedBox(width: 8),
+                Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (adminId != null)
+              Text('${strings.confirmedBy}: ${members[adminId]?.name ?? adminId}'),
+            Text('${dateFormat.format(entry.createdAt)} ${timeFormat.format(entry.createdAt)}'),
+            if (approvedIds.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              for (final memberId in approvedIds)
+                Text(
+                  '${members[memberId]?.name ?? memberId}: ${strings.participantApproved} '
+                  '+${rewards[memberId] ?? 0} ${strings.points}',
+                ),
+            ],
+            if (droppedIds.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              for (final memberId in droppedIds)
+                Text('${members[memberId]?.name ?? memberId}: ${strings.withdrewNoReward}'),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<String> _stringIds(dynamic value) {
+    if (value is List) {
+      return value.whereType<String>().toList();
+    }
+    return const [];
   }
 }
 

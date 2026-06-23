@@ -25,6 +25,20 @@ class _TaskUpdateResult {
   final bool clearReviewNotifications;
 }
 
+class _TaskFinalizationResult {
+  const _TaskFinalizationResult({
+    required this.finalized,
+    this.approvedIds = const [],
+    this.droppedIds = const [],
+    this.rewards = const {},
+  });
+
+  final bool finalized;
+  final List<String> approvedIds;
+  final List<String> droppedIds;
+  final Map<String, int> rewards;
+}
+
 class AuthRepository {
   AuthRepository({
     FirebaseAuth? auth,
@@ -336,6 +350,9 @@ class FamilyRepository {
       createdBy: task.createdBy,
       completedBy: current?.completedBy ?? task.completedBy,
       approvedBy: current?.approvedBy ?? task.approvedBy,
+      droppedBy: current?.droppedBy ?? task.droppedBy,
+      approvedByAdminId: current?.approvedByAdminId ?? task.approvedByAdminId,
+      approvedAt: current?.approvedAt ?? task.approvedAt,
       completedAt: current?.completedAt ?? task.completedAt,
       createdAt: task.createdAt,
     );
@@ -414,44 +431,82 @@ class FamilyRepository {
     return completed;
   }
 
-  Future<int> approveCompletedTask(TaskItem task) async {
+  Future<bool> finalizeSharedTask(
+    TaskItem task, {
+    required List<String> approvedIds,
+    required List<String> droppedIds,
+    required FamilyMember administrator,
+  }) async {
+    final selectedApprovedIds = approvedIds.toSet().toList();
+    final selectedDroppedIds = droppedIds.toSet().toList();
     final taskRef = _tasks.doc(task.id);
-    final approvedCount = await _firestore.runTransaction<int>((transaction) async {
+    final result = await _firestore.runTransaction<_TaskFinalizationResult>((transaction) async {
       final snapshot = await transaction.get(taskRef);
       if (!snapshot.exists) {
-        return 0;
+        return const _TaskFinalizationResult(finalized: false);
       }
       final current = TaskItem.fromDoc(snapshot);
-      if (current.completedBy.isEmpty || current.isDone) {
-        return 0;
+      final selectedIds = {...selectedApprovedIds, ...selectedDroppedIds};
+      if (current.isDone ||
+          current.participantIds.isEmpty ||
+          selectedIds.length != current.participantIds.length ||
+          !current.participantIds.every(selectedIds.contains)) {
+        return const _TaskFinalizationResult(finalized: false);
       }
-      final approvedBy = current.completedBy.toSet().toList();
+      final rewards = <String, int>{};
+      if (selectedApprovedIds.isNotEmpty) {
+        final basePoints = current.points ~/ selectedApprovedIds.length;
+        final remainder = current.points % selectedApprovedIds.length;
+        for (var index = 0; index < selectedApprovedIds.length; index++) {
+          rewards[selectedApprovedIds[index]] = basePoints + (index < remainder ? 1 : 0);
+        }
+      }
       transaction.update(taskRef, {
-        'approvedBy': approvedBy,
+        'completedBy': selectedApprovedIds,
+        'approvedBy': selectedApprovedIds,
+        'droppedBy': selectedDroppedIds,
+        'approvedByAdminId': administrator.id,
+        'approvedAt': Timestamp.fromDate(DateTime.now()),
         'status': TaskStatus.done.name,
         'completedAt': Timestamp.fromDate(DateTime.now()),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      final basePoints = current.points ~/ approvedBy.length;
-      final remainder = current.points % approvedBy.length;
-      for (var index = 0; index < approvedBy.length; index++) {
-        transaction.update(_members.doc(approvedBy[index]), {
+      for (final entry in rewards.entries) {
+        transaction.update(_members.doc(entry.key), {
           'completedTasks': FieldValue.increment(1),
-          'points': FieldValue.increment(basePoints + (index < remainder ? 1 : 0)),
+          'points': FieldValue.increment(entry.value),
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
-      return approvedBy.length;
+      return _TaskFinalizationResult(
+        finalized: true,
+        approvedIds: selectedApprovedIds,
+        droppedIds: selectedDroppedIds,
+        rewards: rewards,
+      );
     });
 
-    if (approvedCount > 0) {
+    if (result.finalized) {
       await acceptNotificationsForEntity(task.id);
       if (task.recurrence != TaskRecurrence.once) {
         await _createRecurringTask(task);
       }
-      await writeHistory('approve_and_pay', 'task', task.title);
+      await writeHistory(
+        'task_finalized',
+        'task',
+        task.title,
+        data: {
+          'taskId': task.id,
+          'taskTitle': task.title,
+          'approvedMemberIds': result.approvedIds,
+          'droppedMemberIds': result.droppedIds,
+          'rewards': result.rewards,
+          'totalPoints': task.points,
+          'approvedByAdminId': administrator.id,
+        },
+      );
     }
-    return approvedCount;
+    return result.finalized;
   }
 
   Future<void> returnTaskForRedo(TaskItem task, String memberId) async {
@@ -780,12 +835,18 @@ class FamilyRepository {
     }
   }
 
-  Future<void> writeHistory(String action, String entity, String? details) async {
+  Future<void> writeHistory(
+    String action,
+    String entity,
+    String? details, {
+    Map<String, dynamic>? data,
+  }) async {
     await _history.add({
       'action': action,
       'entity': entity,
       'details': details,
       'actorId': _auth.currentUser?.uid,
+      if (data != null) 'data': data,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

@@ -227,37 +227,145 @@ class _TaskCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(strings.participants, style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 4),
-              for (final memberId in task.completedBy)
+              for (final memberId in task.participantIds)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: members[memberId] == null
                       ? const CircleAvatar(child: Icon(Icons.person_rounded))
                       : MemberAvatar(member: members[memberId]!, radius: 18),
                   title: Text(members[memberId]?.name ?? memberId),
-                  subtitle: Text(strings.taskSentForReview),
-                  trailing: IconButton(
-                    tooltip: strings.redoTask,
-                    onPressed: () => familyRepository.returnTaskForRedo(task, memberId),
-                    icon: const Icon(Icons.replay_rounded),
+                  subtitle: Text(
+                    task.hasCompleted(memberId)
+                        ? strings.taskSentForReview
+                        : strings.noneYet,
                   ),
                 ),
               const SizedBox(height: 8),
               FilledButton.icon(
-                onPressed: () async {
-                  final approvedCount = await familyRepository.approveCompletedTask(task);
-                  if (context.mounted && approvedCount > 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(strings.payoutComplete)),
-                    );
-                  }
-                },
+                onPressed: () => _showFinalizeDialog(context),
                 icon: const Icon(Icons.verified_rounded),
-                label: Text(strings.approveCompletedAndPay),
+                label: Text(strings.reviewAndFinalize),
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showFinalizeDialog(BuildContext context) async {
+    final pageContext = context;
+    final administrator = currentMember;
+    if (administrator == null) {
+      return;
+    }
+    final strings = AppStrings.of(context);
+    final approved = task.completedBy.toSet();
+    final dropped = <String>{};
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final participantIds = task.participantIds;
+            final chosenIds = {...approved, ...dropped};
+            final allChosen = chosenIds.length == participantIds.length;
+            final approvedIds = participantIds.where(approved.contains).toList();
+            final pointsByMember = <String, int>{};
+            if (approvedIds.isNotEmpty) {
+              final basePoints = task.points ~/ approvedIds.length;
+              final remainder = task.points % approvedIds.length;
+              for (var index = 0; index < approvedIds.length; index++) {
+                pointsByMember[approvedIds[index]] = basePoints + (index < remainder ? 1 : 0);
+              }
+            }
+            return AlertDialog(
+              title: Text(strings.taskOutcome),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(task.title, style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      Text(strings.chooseOutcomeForEveryone),
+                      const SizedBox(height: 12),
+                      for (final memberId in participantIds) ...[
+                        Text(members[memberId]?.name ?? memberId, style: Theme.of(context).textTheme.titleSmall),
+                        CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: approved.contains(memberId),
+                          title: Text(
+                            pointsByMember.containsKey(memberId)
+                                ? '${strings.completedAndRewarded} (+${pointsByMember[memberId]} ${strings.points})'
+                                : strings.completedAndRewarded,
+                          ),
+                          onChanged: (value) => setDialogState(() {
+                            if (value == true) {
+                              approved.add(memberId);
+                              dropped.remove(memberId);
+                            } else {
+                              approved.remove(memberId);
+                            }
+                          }),
+                        ),
+                        CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: dropped.contains(memberId),
+                          title: Text(strings.withdrewNoReward),
+                          onChanged: (value) => setDialogState(() {
+                            if (value == true) {
+                              dropped.add(memberId);
+                              approved.remove(memberId);
+                            } else {
+                              dropped.remove(memberId);
+                            }
+                          }),
+                        ),
+                        const Divider(),
+                      ],
+                      if (approvedIds.isNotEmpty)
+                        Text(strings.rewardSplitPreview(task.points, approvedIds.length)),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(strings.cancel),
+                ),
+                FilledButton.icon(
+                  onPressed: !allChosen
+                      ? null
+                      : () async {
+                          final finalized = await familyRepository.finalizeSharedTask(
+                            task,
+                            approvedIds: approvedIds,
+                            droppedIds: participantIds.where(dropped.contains).toList(),
+                            administrator: administrator,
+                          );
+                          if (!dialogContext.mounted) {
+                            return;
+                          }
+                          Navigator.of(dialogContext).pop();
+                          if (pageContext.mounted) {
+                            ScaffoldMessenger.of(pageContext).showSnackBar(
+                              SnackBar(content: Text(finalized ? strings.payoutComplete : strings.taskAlreadyClaimed)),
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.verified_rounded),
+                  label: Text(strings.reviewAndFinalize),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
